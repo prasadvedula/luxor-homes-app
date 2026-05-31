@@ -6,8 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function flatLabel(floor: number, number: number): string {
-  const letters = 'ABCDEFGHIJKLN'
-  return `${floor}${letters[number - 1] ?? number}`
+  return String(floor * 100 + number)
 }
 
 // Generate all 70 flats: 5 floors × 14 per floor

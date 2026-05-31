@@ -38,7 +38,7 @@ export function Sidebar() {
             href={href}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              pathname.startsWith(href)
+              pathname === href || (href !== '/dashboard' && pathname.startsWith(href + '/')) || (href !== '/dashboard' && pathname === href)
                 ? 'bg-gold-500 text-white'
                 : 'text-navy-200 hover:bg-navy-700 hover:text-white'
             )}
