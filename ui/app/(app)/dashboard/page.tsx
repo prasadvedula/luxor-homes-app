@@ -101,10 +101,8 @@ export default async function DashboardPage() {
               { href: '/residents',   icon: Users,         label: 'Browse resident directory',  color: '#60a5fa' },
             ].map(item => (
               <Link key={item.href} href={item.href}
-                className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-medium text-white transition-all group"
+                className="quick-action-link flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-medium text-white transition-all group"
                 style={{ textDecoration: 'none' }}
-                onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.background = 'rgba(201,168,76,0.06)')}
-                onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.background = 'transparent')}
               >
                 <item.icon className="w-4 h-4 flex-shrink-0" style={{ color: item.color }} />
                 <span style={{ color: '#94a3b8' }} className="group-hover:text-white transition-colors">{item.label}</span>
