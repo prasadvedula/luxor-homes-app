@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RESIDENT
+  SECURITY
+}
+
+enum FlatStatus {
+  OCCUPIED
+  VACANT
+  UNDER_RENOVATION
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ElectionStatus {
+  DRAFT
+  NOMINATIONS_OPEN
+  VOTING_OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VisitorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHECKED_OUT
+}
+
+enum FacilityType {
+  LIFT
+  GYM
+  PARKING
+  PLAY_AREA
+  CLUBHOUSE
+  GARDEN
+  SECURITY_ROOM
+  OTHER
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  name               String
+  email              String             @unique
+  password           String
+  role               Role               @default(RESIDENT)
+  phone              String?
+  registrationStatus RegistrationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  owner            Owner?
+  visitorApprovals Visitor[]   @relation("ApprovedBy")
+  votes            Vote[]
+  candidacies      Candidate[]
+}
+
+model Flat {
+  id        String     @id @default(cuid())
+  floor     Int
+  number    Int
+  label     String     @unique
+  status    FlatStatus @default(OCCUPIED)
+  createdAt DateTime   @default(now())
+
+  owner Owner?
+}
+
+model Owner {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  flatId    String   @unique
+  name      String
+  phone     String
+  altPhone  String?
+  email     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flat              Flat               @relation(fields: [flatId], references: [id])
+  emergencyContacts EmergencyContact[]
+  vehicles          Vehicle[]
+}
+
+model EmergencyContact {
+  id       String @id @default(cuid())
+  ownerId  String
+  name     String
+  relation String
+  phone    String
+
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model Vehicle {
+  id           String  @id @default(cuid())
+  ownerId      String
+  registration String
+  type         String
+  make         String?
+  color        String?
+
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model Facility {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  type        FacilityType
+  description String?
+  location    String?
+  createdAt   DateTime     @default(now())
+
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model MaintenanceRequest {
+  id          String              @id @default(cuid())
+  facilityId  String
+  reportedBy  String
+  title       String
+  description String
+  status      MaintenanceStatus   @default(OPEN)
+  priority    MaintenancePriority @default(MEDIUM)
+  resolvedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+}
+
+model Election {
+  id              String         @id @default(cuid())
+  title           String
+  description     String?
+  nominationStart DateTime
+  nominationEnd   DateTime
+  votingStart     DateTime
+  votingEnd       DateTime
+  status          ElectionStatus @default(DRAFT)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  candidates Candidate[]
+  votes      Vote[]
+}
+
+model Candidate {
+  id         String   @id @default(cuid())
+  electionId String
+  userId     String
+  position   String
+  bio        String?
+  approved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  votes    Vote[]
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  electionId  String
+  candidateId String
+  voterId     String
+  flatId      String
+  createdAt   DateTime @default(now())
+
+  election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+  voter     User      @relation(fields: [voterId], references: [id])
+
+  @@unique([electionId, flatId, candidateId])
+}
+
+model Visitor {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String
+  purpose      String
+  flatToVisit  String
+  approvedById String?
+  status       VisitorStatus @default(PENDING)
+  entryTime    DateTime?
+  exitTime     DateTime?
+  note         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  approvedBy User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+}

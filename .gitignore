@@ -1,0 +1,19 @@
+# Root
+node_modules/
+.env
+prisma/*.db
+prisma/*.db-journal
+
+# API
+api/node_modules/
+api/dist/
+api/.env
+
+# UI
+ui/node_modules/
+ui/.next/
+ui/.env*.local
+ui/tsconfig.tsbuildinfo
+
+*.log
+.DS_Store

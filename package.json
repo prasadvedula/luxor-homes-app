@@ -1,0 +1,31 @@
+{
+  "name": "luxor-homes-app",
+  "version": "1.0.0",
+  "description": "Luxor Homes society management app — api/ + ui/ + shared Prisma at root",
+  "private": true,
+  "scripts": {
+    "dev:api": "npm --prefix api run dev",
+    "dev:ui": "npm --prefix ui run dev",
+    "install:all": "npm install && npm --prefix api install && npm --prefix ui install",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "build:api": "npm --prefix api run build",
+    "build:ui": "npm --prefix ui run build"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
+  }
+}
