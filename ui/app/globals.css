@@ -1,38 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #1a2744;
+  --bg: #050D1A;
+  --surface: #0B1628;
+  --card: rgba(11,22,40,0.92);
+  --border: rgba(201,168,76,0.15);
+  --border-h: rgba(201,168,76,0.35);
+  --gold: #C9A84C;
+  --gold-l: #E8C55A;
+  --text: #EEF2FF;
+  --muted: #7B8FAD;
+  --faint: #3A4E6A;
 }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-navy-800 text-white px-4 py-2 rounded-lg hover:bg-navy-700 transition-colors font-medium;
-  }
-  .btn-secondary {
-    @apply bg-white text-navy-800 border border-navy-800 px-4 py-2 rounded-lg hover:bg-navy-50 transition-colors font-medium;
-  }
-  .btn-gold {
-    @apply bg-gold-500 text-white px-4 py-2 rounded-lg hover:bg-gold-600 transition-colors font-medium;
-  }
-  .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium;
-  }
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
-  }
-  .input {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy-500 text-sm;
-  }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
+/* ── Glass card ─────────────────────────── */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color .25s, box-shadow .25s;
 }
+.glass:hover { border-color: var(--border-h); box-shadow: 0 8px 32px rgba(0,0,0,.45), 0 0 0 1px rgba(201,168,76,.18); }
+
+/* ── Gold text gradient ─────────────────── */
+.gold-text {
+  background: linear-gradient(135deg,#E8C55A 0%,#C9A84C 60%,#E8C55A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Buttons ────────────────────────────── */
+.btn-gold {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg,#C9A84C,#E8C55A 50%,#C9A84C);
+  background-size: 200%;
+  color: #050D1A; font-weight: 700; font-size: .875rem;
+  padding: 9px 22px; border-radius: 8px; border: none; cursor: pointer;
+  transition: background-position .4s, box-shadow .2s, transform .15s;
+  box-shadow: 0 2px 14px rgba(201,168,76,.35);
+}
+.btn-gold:hover { background-position: right; box-shadow: 0 4px 22px rgba(201,168,76,.55); transform: translateY(-1px); }
+.btn-gold:active { transform: translateY(0); }
+.btn-gold:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; color: var(--gold);
+  border: 1px solid rgba(201,168,76,.35);
+  font-weight: 500; font-size: .875rem;
+  padding: 9px 22px; border-radius: 8px; cursor: pointer;
+  transition: background .2s, border-color .2s, transform .15s;
+}
+.btn-ghost:hover { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.6); transform: translateY(-1px); }
+.btn-ghost:disabled { opacity:.5; cursor:not-allowed; }
+
+.btn-danger {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(239,68,68,.12); color: #f87171;
+  border: 1px solid rgba(239,68,68,.25);
+  font-weight: 500; font-size: .875rem;
+  padding: 9px 22px; border-radius: 8px; cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.btn-danger:hover { background: rgba(239,68,68,.22); border-color: rgba(239,68,68,.45); }
+
+/* ── Inputs ─────────────────────────────── */
+.lux-input {
+  width: 100%; background: rgba(7,16,30,.8);
+  border: 1px solid rgba(201,168,76,.2); border-radius: 8px;
+  padding: 10px 14px; color: var(--text); font-size: .875rem; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.lux-input::placeholder { color: var(--faint); }
+.lux-input:focus { border-color: rgba(201,168,76,.55); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
+.lux-input option { background: #0B1628; }
+
+.lux-label {
+  display: block; font-size: .7rem; font-weight: 600;
+  color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px;
+}
+
+/* ── Badges ─────────────────────────────── */
+.badge { display:inline-flex; align-items:center; padding:2px 10px; border-radius:20px; font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.badge-green  { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.2);  }
+.badge-yellow { background:rgba(234,179,8,.12);  color:#facc15; border:1px solid rgba(234,179,8,.2);  }
+.badge-red    { background:rgba(239,68,68,.12);  color:#f87171; border:1px solid rgba(239,68,68,.2);  }
+.badge-blue   { background:rgba(59,130,246,.12); color:#60a5fa; border:1px solid rgba(59,130,246,.2); }
+.badge-purple { background:rgba(168,85,247,.12); color:#c084fc; border:1px solid rgba(168,85,247,.2); }
+.badge-gold   { background:rgba(201,168,76,.12); color:#E8C55A; border:1px solid rgba(201,168,76,.25);}
+.badge-gray   { background:rgba(100,116,139,.12);color:#94a3b8; border:1px solid rgba(100,116,139,.2);}
+.badge-orange { background:rgba(249,115,22,.12); color:#fb923c; border:1px solid rgba(249,115,22,.2); }
+
+/* ── Divider ────────────────────────────── */
+.gold-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.3),transparent); margin:20px 0; }
+
+/* ── Scrollbar ──────────────────────────── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:rgba(201,168,76,.2); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(201,168,76,.4); }
+
+/* ── Animations ─────────────────────────── */
+@keyframes fade-up { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.animate-fade-up { animation: fade-up .4s ease-out; }
+@keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
