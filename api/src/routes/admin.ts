@@ -7,14 +7,15 @@ router.use(authenticate)
 
 // Stats are visible to all authenticated users for the dashboard
 router.get('/stats', async (_req, res: Response): Promise<void> => {
-  const [residents, pendingUsers, openMaintenance, pendingVisitors, activeElection] = await Promise.all([
+  const [residents, rentedFlats, pendingUsers, openMaintenance, pendingVisitors, activeElection] = await Promise.all([
     prisma.owner.count(),
+    prisma.tenant.count(),
     prisma.user.count({ where: { registrationStatus: 'PENDING' } }),
     prisma.maintenanceRequest.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
     prisma.visitor.count({ where: { status: 'PENDING' } }),
     prisma.election.findFirst({ where: { status: { in: ['NOMINATIONS_OPEN', 'VOTING_OPEN'] } } }),
   ])
-  res.json({ residents, pendingUsers, openMaintenance, pendingVisitors, activeElection })
+  res.json({ residents, rentedFlats, pendingUsers, openMaintenance, pendingVisitors, activeElection })
 })
 
 // Admin-only routes below

@@ -108,6 +108,23 @@ model Owner {
   flat              Flat               @relation(fields: [flatId], references: [id])
   emergencyContacts EmergencyContact[]
   vehicles          Vehicle[]
+  tenant            Tenant?
+}
+
+model Tenant {
+  id              String    @id @default(cuid())
+  ownerId         String    @unique
+  name            String
+  phone           String
+  email           String?
+  moveInDate      DateTime?
+  leaseEndDate    DateTime?
+  rentAmount      Float?
+  agreementNumber String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model EmergencyContact {

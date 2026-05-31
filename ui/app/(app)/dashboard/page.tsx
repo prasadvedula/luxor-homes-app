@@ -2,10 +2,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { serverApi } from '@/lib/api-client'
 import Link from 'next/link'
-import { Users, Vote, Wrench, ShieldCheck, Clock, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react'
+import { Users, Vote, Wrench, ShieldCheck, Clock, AlertTriangle, ArrowRight, TrendingUp, KeyRound } from 'lucide-react'
 
 type Stats = {
-  residents: number; pendingUsers: number; openMaintenance: number
+  residents: number; rentedFlats: number; pendingUsers: number; openMaintenance: number
   pendingVisitors: number; activeElection: { id: string; title: string; status: string } | null
 }
 
@@ -18,13 +18,14 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   const isAdmin = session?.user.role === 'ADMIN'
   const res = await serverApi('/admin/stats').catch(() => null)
-  const stats: Stats = res?.ok ? await res.json() : { residents: 0, pendingUsers: 0, openMaintenance: 0, pendingVisitors: 0, activeElection: null }
-  const { residents, pendingUsers, openMaintenance, pendingVisitors, activeElection } = stats
+  const stats: Stats = res?.ok ? await res.json() : { residents: 0, rentedFlats: 0, pendingUsers: 0, openMaintenance: 0, pendingVisitors: 0, activeElection: null }
+  const { residents, rentedFlats, pendingUsers, openMaintenance, pendingVisitors, activeElection } = stats
 
   const cards = [
-    { label: 'Residents',          value: residents,        sub: 'of 70 flats',      icon: Users,       href: '/residents',           color: '#60a5fa', bg: 'rgba(59,130,246,0.1)'  },
-    { label: 'Open Maintenance',   value: openMaintenance,  sub: 'active issues',    icon: Wrench,      href: '/maintenance',          color: '#fb923c', bg: 'rgba(249,115,22,0.1)'  },
-    { label: 'Pending Visitors',   value: pendingVisitors,  sub: 'awaiting approval',icon: ShieldCheck, href: '/visitors',             color: '#c084fc', bg: 'rgba(168,85,247,0.1)'  },
+    { label: 'Residents',        value: residents,       sub: 'of 70 flats',       icon: Users,       href: '/residents',  color: '#60a5fa', bg: 'rgba(59,130,246,0.1)'  },
+    { label: 'Rented Flats',     value: rentedFlats,     sub: 'with active tenant', icon: KeyRound,    href: '/residents',  color: '#fb923c', bg: 'rgba(249,115,22,0.1)'  },
+    { label: 'Open Maintenance', value: openMaintenance, sub: 'active issues',      icon: Wrench,      href: '/maintenance',color: '#c084fc', bg: 'rgba(168,85,247,0.1)'  },
+    { label: 'Pending Visitors', value: pendingVisitors, sub: 'awaiting approval',  icon: ShieldCheck, href: '/visitors',   color: '#4ade80', bg: 'rgba(34,197,94,0.1)'   },
     ...(isAdmin ? [{ label: 'Pending Approvals', value: pendingUsers, sub: 'new residents', icon: Clock, href: '/residents', color: '#facc15', bg: 'rgba(234,179,8,0.1)' }] : []),
   ]
 
@@ -116,9 +117,10 @@ export default async function DashboardPage() {
           <p className="text-xs font-semibold mb-4" style={{ color: '#4A5E7A', letterSpacing: '0.08em' }}>SOCIETY INFO</p>
           <div className="space-y-3">
             {[
-              { label: 'Total Flats', value: '70', sub: 'across 5 floors' },
-              { label: 'Registered Owners', value: `${residents}`, sub: `${70 - residents} pending or vacant` },
-              { label: 'Occupancy', value: `${Math.round((residents / 70) * 100)}%`, sub: 'of flats registered' },
+              { label: 'Total Flats',       value: '70',                                  sub: 'across 5 floors' },
+              { label: 'Owner-Occupied',   value: `${residents - rentedFlats}`,          sub: `${rentedFlats} rented out` },
+              { label: 'Rented Out',        value: `${rentedFlats}`,                      sub: 'with active tenants' },
+              { label: 'Occupancy',         value: `${Math.round((residents / 70) * 100)}%`, sub: 'of flats registered' },
             ].map(item => (
               <div key={item.label} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(201,168,76,0.08)' }}>
                 <div>

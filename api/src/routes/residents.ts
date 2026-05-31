@@ -4,7 +4,15 @@ import { authenticate, AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
-// Public — needed for the registration form before the user has a token
+const OWNER_INCLUDE = {
+  flat: true,
+  emergencyContacts: true,
+  vehicles: true,
+  tenant: true,
+  user: { select: { id: true, email: true, registrationStatus: true } },
+}
+
+// Public — needed for registration form (no token yet)
 router.get('/flats', async (_req, res: Response): Promise<void> => {
   const flats = await prisma.flat.findMany({
     where: { owner: null },
@@ -14,17 +22,11 @@ router.get('/flats', async (_req, res: Response): Promise<void> => {
   res.json(flats)
 })
 
-// All routes below require auth
 router.use(authenticate)
 
 router.get('/', async (_req, res: Response): Promise<void> => {
   const owners = await prisma.owner.findMany({
-    include: {
-      flat: true,
-      emergencyContacts: true,
-      vehicles: true,
-      user: { select: { id: true, email: true, registrationStatus: true } },
-    },
+    include: OWNER_INCLUDE,
     orderBy: [{ flat: { floor: 'asc' } }, { flat: { number: 'asc' } }],
   })
   res.json(owners)
@@ -33,12 +35,7 @@ router.get('/', async (_req, res: Response): Promise<void> => {
 router.get('/:id', async (req, res: Response): Promise<void> => {
   const owner = await prisma.owner.findUnique({
     where: { id: req.params.id },
-    include: {
-      flat: true,
-      emergencyContacts: true,
-      vehicles: true,
-      user: { select: { id: true, email: true } },
-    },
+    include: OWNER_INCLUDE,
   })
   if (!owner) { res.status(404).json({ error: 'Not found' }); return }
   res.json(owner)
@@ -53,10 +50,22 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
     res.status(403).json({ error: 'Forbidden' }); return
   }
 
-  const { name, phone, altPhone, emergencyContacts, vehicles } = req.body
+  const { name, phone, altPhone, emergencyContacts, vehicles, tenantData } = req.body
 
   await prisma.emergencyContact.deleteMany({ where: { ownerId: id } })
   await prisma.vehicle.deleteMany({ where: { ownerId: id } })
+
+  // Handle tenant: null = remove, object = upsert
+  if (tenantData === null) {
+    await prisma.tenant.deleteMany({ where: { ownerId: id } })
+  } else if (tenantData) {
+    const { name: tName, phone: tPhone, email, moveInDate, leaseEndDate, rentAmount, agreementNumber } = tenantData
+    await prisma.tenant.upsert({
+      where: { ownerId: id },
+      update: { name: tName, phone: tPhone, email, moveInDate: moveInDate ? new Date(moveInDate) : null, leaseEndDate: leaseEndDate ? new Date(leaseEndDate) : null, rentAmount: rentAmount ? Number(rentAmount) : null, agreementNumber },
+      create: { ownerId: id, name: tName, phone: tPhone, email, moveInDate: moveInDate ? new Date(moveInDate) : null, leaseEndDate: leaseEndDate ? new Date(leaseEndDate) : null, rentAmount: rentAmount ? Number(rentAmount) : null, agreementNumber },
+    })
+  }
 
   const updated = await prisma.owner.update({
     where: { id },
@@ -65,7 +74,7 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
       emergencyContacts: emergencyContacts?.length ? { create: emergencyContacts } : undefined,
       vehicles: vehicles?.length ? { create: vehicles } : undefined,
     },
-    include: { flat: true, emergencyContacts: true, vehicles: true },
+    include: OWNER_INCLUDE,
   })
   res.json(updated)
 })
