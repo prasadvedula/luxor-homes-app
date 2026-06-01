@@ -35,6 +35,7 @@ export function statusColor(status: string) {
     COMPLETED: 'bg-green-100 text-green-800',
     CANCELLED: 'bg-red-100 text-red-800',
     CHECKED_OUT: 'bg-gray-100 text-gray-800',
+    ACTIVE: 'bg-teal-100 text-teal-800',
     OCCUPIED: 'bg-green-100 text-green-800',
     VACANT: 'bg-blue-100 text-blue-800',
     UNDER_RENOVATION: 'bg-orange-100 text-orange-800',

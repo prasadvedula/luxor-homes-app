@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { Building2, LayoutDashboard, Users, Vote, Wrench, ShieldCheck, LogOut } from 'lucide-react'
+import { Building2, LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { NotificationBell } from './notification-bell'
@@ -13,6 +13,7 @@ const nav = [
   { href: '/elections',   label: 'Elections',   icon: Vote },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/visitors',    label: 'Visitors',    icon: ShieldCheck },
+  { href: '/maids',      label: 'Maids',       icon: UserCheck },
 ]
 
 export function Sidebar() {

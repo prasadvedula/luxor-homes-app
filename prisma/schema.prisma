@@ -54,6 +54,14 @@ enum VisitorStatus {
   CHECKED_OUT
 }
 
+enum MaidStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  CHECKED_OUT
+  REJECTED
+}
+
 enum FacilityType {
   LIFT
   GYM
@@ -78,6 +86,7 @@ model User {
 
   owner            Owner?
   visitorApprovals Visitor[]   @relation("ApprovedBy")
+  maidApprovals    Maid[]      @relation("MaidApprovedBy")
   votes            Vote[]
   candidacies      Candidate[]
 }
@@ -234,4 +243,23 @@ model Visitor {
   updatedAt    DateTime      @updatedAt
 
   approvedBy User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+}
+
+model Maid {
+  id           String     @id @default(cuid())
+  name         String
+  phone        String
+  idCardType   String
+  idCardNumber String
+  flatAssigned String
+  workType     String
+  status       MaidStatus @default(PENDING)
+  entryTime    DateTime?
+  exitTime     DateTime?
+  approvedById String?
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  approvedBy User? @relation("MaidApprovedBy", fields: [approvedById], references: [id])
 }
