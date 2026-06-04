@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
+import { createProxyMiddleware } from 'http-proxy-middleware'
 import authRouter from './routes/auth'
 import residentsRouter from './routes/residents'
 import electionsRouter from './routes/elections'
@@ -33,5 +34,13 @@ app.use('/maintenance', maintenanceRouter)
 app.use('/visitors', visitorsRouter)
 app.use('/maids', maidsRouter)
 app.use('/admin', adminRouter)
+
+// Proxy all remaining requests to the Next.js UI on port 3000
+const UI_PORT = process.env.UI_PORT || '3000'
+app.use('/', createProxyMiddleware({
+  target: `http://localhost:${UI_PORT}`,
+  changeOrigin: false,
+  ws: true,
+}))
 
 export default app

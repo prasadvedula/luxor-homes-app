@@ -1,7 +1,8 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 
-const API_BASE = process.env.API_URL || 'http://localhost:4000'
+// In production, Express runs on $PORT and Next.js server-side code can reach it at localhost:$PORT
+const API_BASE = process.env.API_URL || `http://localhost:${process.env.PORT || 4000}`
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,

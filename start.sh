@@ -1,21 +1,18 @@
 #!/bin/sh
 set -e
 
-# Railway assigns the public port via $PORT (default 3000)
-PUBLIC_PORT=${PORT:-3000}
-
-# Start Express API on fixed internal port 4000
-PORT=4000 node api/dist/server.js &
+# Express API binds to Railway's $PORT so the healthcheck at $PORT/health works.
+# Express also proxies all non-API traffic to Next.js on port 3000.
+node api/dist/server.js &
 API_PID=$!
 
-# Brief pause so Express is ready before Next.js starts proxying
+# Give Express a moment to start before Next.js begins receiving proxied requests
 sleep 2
 
-# Start Next.js on Railway's public port
-cd /app/ui && PORT=$PUBLIC_PORT node_modules/.bin/next start -H 0.0.0.0 -p $PUBLIC_PORT &
+# Next.js UI on fixed internal port 3000
+cd /app/ui && PORT=3000 node_modules/.bin/next start -H 0.0.0.0 -p 3000 &
 UI_PID=$!
 
-echo "API PID=$API_PID (port 4000) | UI PID=$UI_PID (port $PUBLIC_PORT)"
+echo "API PID=$API_PID (port ${PORT:-4000}) | UI PID=$UI_PID (port 3000)"
 
-# Exit if either process dies
 wait $API_PID $UI_PID
