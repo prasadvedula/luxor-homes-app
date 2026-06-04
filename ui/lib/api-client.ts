@@ -7,7 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 // ── Server-side (Server Components, Route Handlers) ─────────────────────────
 export async function serverApi(path: string, options: RequestInit = {}) {
   const session = await auth()
-  const token = (session as { backendToken?: string } | null)?.backendToken
+  const token = session?.user?.backendToken
 
   return fetch(`${API_BASE}${path}`, {
     ...options,

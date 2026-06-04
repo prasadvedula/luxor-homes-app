@@ -15,6 +15,6 @@ const emptyApi = (_path: string, _options?: RequestInit) =>
 
 export function useApi() {
   const { data: session } = useSession()
-  const token = (session as { backendToken?: string } | null)?.backendToken ?? null
+  const token = session?.user?.backendToken ?? null
   return useMemo(() => token ? makeClientApi(token) : emptyApi, [token])
 }
