@@ -17,8 +17,8 @@ COPY api/ ./api/
 RUN cd api && npm run build
 
 # ── UI: install + build (Next.js standalone) ────────────────────────────────
-COPY ui/package.json ui/package-lock.json ./ui/
-RUN cd ui && npm ci
+COPY ui/package.json ./ui/
+RUN cd ui && npm install --legacy-peer-deps
 COPY ui/ ./ui/
 RUN cd ui && NEXT_PUBLIC_API_URL="" npm run build
 
