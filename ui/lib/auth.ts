@@ -1,11 +1,11 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { authConfig } from './auth.config'
 
 const API_BASE = process.env.API_URL || 'https://luxor-homes-api-production.up.railway.app'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
-  session: { strategy: 'jwt' },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -31,22 +31,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role         = (user as unknown as { role: string }).role
-        token.backendToken = (user as unknown as { backendToken: string }).backendToken
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id            = token.sub as string
-        session.user.role          = token.role as string
-        session.user.backendToken  = token.backendToken as string
-      }
-      return session
-    },
-  },
-  pages: { signIn: '/login' },
 })
