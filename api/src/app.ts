@@ -33,6 +33,22 @@ app.use(cors({
 }))
 app.use(express.json())
 
+// RSC (React Server Component) page navigation requests have ?_rsc= or
+// Accept: text/x-component — these are Next.js page fetches, not API calls.
+// Forward them directly to Next.js before any API route can intercept them.
+const UI_PORT = process.env.UI_PORT || '3000'
+const uiProxy = createProxyMiddleware({
+  target: `http://localhost:${UI_PORT}`,
+  changeOrigin: false,
+  ws: true,
+})
+app.use((req, res, next) => {
+  if (req.query._rsc !== undefined || req.headers.accept?.includes('text/x-component')) {
+    return uiProxy(req, res, next)
+  }
+  next()
+})
+
 // Serve APK download page and file
 const downloadDir = path.join(__dirname, '../public/download')
 app.use('/download', express.static(downloadDir))
@@ -50,12 +66,7 @@ app.use('/visitors', visitorsRouter)
 app.use('/maids', maidsRouter)
 app.use('/admin', adminRouter)
 
-// Proxy all remaining requests to the Next.js UI on port 3000
-const UI_PORT = process.env.UI_PORT || '3000'
-app.use('/', createProxyMiddleware({
-  target: `http://localhost:${UI_PORT}`,
-  changeOrigin: false,
-  ws: true,
-}))
+// Proxy all remaining requests to the Next.js UI
+app.use('/', uiProxy)
 
 export default app
