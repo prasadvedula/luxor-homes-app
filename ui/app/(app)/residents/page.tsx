@@ -34,8 +34,8 @@ export default function ResidentsPage() {
   const isAdmin = session?.user.role === 'ADMIN'
 
   useEffect(() => {
-    api('/residents').then(r => r.json()).then((d: Owner[]) => { setOwners(d); setLoading(false) })
-    if (isAdmin) api('/admin/pending-users').then(r => r.json()).then(setPending)
+    api('/residents').then(r => r.ok ? r.json() : []).then((d: Owner[]) => { setOwners(Array.isArray(d) ? d : []); setLoading(false) })
+    if (isAdmin) api('/admin/pending-users').then(r => r.ok ? r.json() : []).then((d) => setPending(Array.isArray(d) ? d : []))
   }, [api, isAdmin])
 
   async function handleApproval(userId: string, action: 'APPROVED' | 'REJECTED') {

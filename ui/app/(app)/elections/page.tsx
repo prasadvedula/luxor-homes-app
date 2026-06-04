@@ -23,7 +23,7 @@ export default function ElectionsPage() {
   const [elections, setElections] = useState<Election[]>([])
   const isAdmin = session?.user.role === 'ADMIN'
 
-  useEffect(() => { api('/elections').then(r=>r.json()).then(setElections) }, [api])
+  useEffect(() => { api('/elections').then(r => r.ok ? r.json() : []).then((d) => setElections(Array.isArray(d) ? d : [])) }, [api])
 
   return (
     <div className="space-y-6">

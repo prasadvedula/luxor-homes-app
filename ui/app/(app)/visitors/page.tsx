@@ -41,8 +41,10 @@ export default function VisitorsPage() {
 
   const fetchVisitors = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
-    const res = await api('/visitors'); const data = await res.json()
-    setVisitors(data); setRefreshing(false)
+    const res = await api('/visitors')
+    if (!res.ok) { setRefreshing(false); return }
+    const data = await res.json()
+    setVisitors(Array.isArray(data) ? data : []); setRefreshing(false)
   }, [api])
 
   useEffect(() => { fetchVisitors() }, [fetchVisitors])

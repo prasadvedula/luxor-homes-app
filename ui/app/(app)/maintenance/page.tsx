@@ -39,9 +39,11 @@ export default function MaintenancePage() {
   const isAdmin = session?.user.role === 'ADMIN'
 
   useEffect(() => {
-    api('/maintenance').then(r => r.json()).then((d:{requests:Request[];facilities:Facility[]}) => {
-      setRequests(d.requests); setFacilities(d.facilities)
-      if (d.facilities.length>0) setForm(f => f.facilityId ? f : {...f,facilityId:d.facilities[0].id})
+    api('/maintenance').then(r => r.ok ? r.json() : { requests: [], facilities: [] }).then((d:{requests:Request[];facilities:Facility[]}) => {
+      const reqs = Array.isArray(d?.requests) ? d.requests : []
+      const facs = Array.isArray(d?.facilities) ? d.facilities : []
+      setRequests(reqs); setFacilities(facs)
+      if (facs.length > 0) setForm(f => f.facilityId ? f : {...f, facilityId: facs[0].id})
     })
   }, [api])
 
@@ -54,7 +56,7 @@ export default function MaintenancePage() {
 
   async function updateStatus(id: string, status: string) {
     await api(`/maintenance/${id}`,{method:'PATCH',body:JSON.stringify({status})})
-    api('/maintenance').then(r=>r.json()).then((d:{requests:Request[]})=>setRequests(d.requests))
+    api('/maintenance').then(r => r.ok ? r.json() : { requests: [] }).then((d:{requests:Request[]}) => setRequests(Array.isArray(d?.requests) ? d.requests : []))
   }
 
   const filtered = filter==='ALL' ? requests : requests.filter(r=>r.status===filter)

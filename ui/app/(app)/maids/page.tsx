@@ -47,7 +47,7 @@ export default function MaidsPage() {
   const canLog = role === 'ADMIN' || role === 'SECURITY'
   const canApprove = role === 'ADMIN' || role === 'RESIDENT'
 
-  useEffect(() => { api('/maids').then(r => r.json()).then(setMaids) }, [api])
+  useEffect(() => { api('/maids').then(r => r.ok ? r.json() : []).then((d) => setMaids(Array.isArray(d) ? d : [])) }, [api])
 
   async function registerMaid(e: React.FormEvent) {
     e.preventDefault()
