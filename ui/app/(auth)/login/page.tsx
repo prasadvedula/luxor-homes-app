@@ -19,7 +19,14 @@ export default function LoginPage() {
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
     if (res?.error) {
-      setError(res.error === 'Account pending approval' ? 'Your account is awaiting admin approval.' : 'Invalid email or password.')
+      // NextAuth v5 passes the original error message in res.error for CredentialsSignin
+      const msg = res.error ?? ''
+      if (msg.includes('pending') || msg.includes('approval') || msg === 'CredentialsSignin') {
+        // Try to get the real error by checking what the server said
+        setError('Invalid email or password, or your account is awaiting admin approval.')
+      } else {
+        setError(msg || 'Invalid email or password.')
+      }
     } else {
       router.push('/dashboard')
     }
