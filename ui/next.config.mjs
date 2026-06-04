@@ -12,6 +12,7 @@ const nextConfig = {
       { source: '/maintenance/:path*', destination: `${apiBase}/maintenance/:path*` },
       { source: '/visitors/:path*',    destination: `${apiBase}/visitors/:path*` },
       { source: '/admin/:path*',       destination: `${apiBase}/admin/:path*` },
+      { source: '/maids/:path*',       destination: `${apiBase}/maids/:path*` },
       { source: '/health',             destination: `${apiBase}/health` },
       { source: '/download/:path*',    destination: `${apiBase}/download/:path*` },
       { source: '/download',           destination: `${apiBase}/download` },

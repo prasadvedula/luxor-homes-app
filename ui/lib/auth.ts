@@ -1,15 +1,14 @@
-import { NextAuthOptions } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
+import NextAuth from 'next-auth'
+import Credentials from 'next-auth/providers/credentials'
 
 const API_BASE = process.env.API_URL || 'http://localhost:4000'
 
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
-    CredentialsProvider({
-      name: 'credentials',
+    Credentials({
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        email:    { label: 'Email',    type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
@@ -27,7 +26,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         const data = await res.json()
-        // data shape: { token, user: { id, name, email, role } }
         return { ...data.user, backendToken: data.token }
       },
     }),
@@ -35,19 +33,19 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as unknown as { role: string }).role
+        token.role         = (user as unknown as { role: string }).role
         token.backendToken = (user as unknown as { backendToken: string }).backendToken
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub as string
-        session.user.role = token.role as string
-        ;(session as unknown as { backendToken: string }).backendToken = token.backendToken as string
+        session.user.id   = token.sub as string
+        ;(session.user as unknown as { role: string }).role             = token.role as string
+        ;(session as unknown as { backendToken: string }).backendToken  = token.backendToken as string
       }
       return session
     },
   },
   pages: { signIn: '/login' },
-}
+})

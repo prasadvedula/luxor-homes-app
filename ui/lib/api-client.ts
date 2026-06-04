@@ -1,11 +1,10 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from './auth'
+import { auth } from './auth'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 // ── Server-side (Server Components, Route Handlers) ─────────────────────────
 export async function serverApi(path: string, options: RequestInit = {}) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   const token = (session as { backendToken?: string } | null)?.backendToken
 
   return fetch(`${API_BASE}${path}`, {

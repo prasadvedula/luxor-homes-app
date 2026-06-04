@@ -9,6 +9,7 @@ const OWNER_INCLUDE = {
   emergencyContacts: true,
   vehicles: true,
   tenant: true,
+  maids: { orderBy: { createdAt: 'asc' as const } },
   user: { select: { id: true, email: true, registrationStatus: true } },
 }
 
@@ -55,7 +56,6 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   await prisma.emergencyContact.deleteMany({ where: { ownerId: id } })
   await prisma.vehicle.deleteMany({ where: { ownerId: id } })
 
-  // Handle tenant: null = remove, object = upsert
   if (tenantData === null) {
     await prisma.tenant.deleteMany({ where: { ownerId: id } })
   } else if (tenantData) {
@@ -77,6 +77,55 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
     include: OWNER_INCLUDE,
   })
   res.json(updated)
+})
+
+// ── Maid routes ─────────────────────────────────────────────────────────────
+
+router.post('/:id/maids', async (req: AuthRequest, res: Response): Promise<void> => {
+  const owner = await prisma.owner.findUnique({ where: { id: req.params.id } })
+  if (!owner) { res.status(404).json({ error: 'Owner not found' }); return }
+
+  if (req.user!.role !== 'ADMIN' && owner.userId !== req.user!.id) {
+    res.status(403).json({ error: 'Forbidden' }); return
+  }
+
+  const { name, phone, role, idType, idNumber, address } = req.body
+  if (!name || !idType || !idNumber) {
+    res.status(400).json({ error: 'name, idType and idNumber are required' }); return
+  }
+
+  const maid = await prisma.maid.create({
+    data: { ownerId: req.params.id, name, phone, role: role ?? 'Maid', idType, idNumber, address },
+  })
+  res.status(201).json(maid)
+})
+
+router.put('/:id/maids/:maidId', async (req: AuthRequest, res: Response): Promise<void> => {
+  const owner = await prisma.owner.findUnique({ where: { id: req.params.id } })
+  if (!owner) { res.status(404).json({ error: 'Owner not found' }); return }
+
+  if (req.user!.role !== 'ADMIN' && owner.userId !== req.user!.id) {
+    res.status(403).json({ error: 'Forbidden' }); return
+  }
+
+  const { name, phone, role, idType, idNumber, address, isActive } = req.body
+  const maid = await prisma.maid.update({
+    where: { id: req.params.maidId },
+    data: { name, phone, role, idType, idNumber, address, isActive },
+  })
+  res.json(maid)
+})
+
+router.delete('/:id/maids/:maidId', async (req: AuthRequest, res: Response): Promise<void> => {
+  const owner = await prisma.owner.findUnique({ where: { id: req.params.id } })
+  if (!owner) { res.status(404).json({ error: 'Owner not found' }); return }
+
+  if (req.user!.role !== 'ADMIN' && owner.userId !== req.user!.id) {
+    res.status(403).json({ error: 'Forbidden' }); return
+  }
+
+  await prisma.maid.delete({ where: { id: req.params.maidId } })
+  res.json({ message: 'Removed' })
 })
 
 export default router

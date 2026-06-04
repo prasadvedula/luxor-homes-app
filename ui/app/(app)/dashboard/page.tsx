@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import { serverApi } from '@/lib/api-client'
 import Link from 'next/link'
 import { Users, Vote, Wrench, ShieldCheck, Clock, AlertTriangle, ArrowRight, TrendingUp, KeyRound } from 'lucide-react'
@@ -15,7 +14,7 @@ function getGreeting() {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   const isAdmin = session?.user.role === 'ADMIN'
   const res = await serverApi('/admin/stats').catch(() => null)
   const stats: Stats = res?.ok ? await res.json() : { residents: 0, rentedFlats: 0, pendingUsers: 0, openMaintenance: 0, pendingVisitors: 0, activeElection: null }
