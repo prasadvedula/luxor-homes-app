@@ -119,23 +119,6 @@ model Owner {
   emergencyContacts EmergencyContact[]
   vehicles          Vehicle[]
   tenant            Tenant?
-  maids             Maid[]
-}
-
-model Maid {
-  id        String   @id @default(cuid())
-  ownerId   String
-  name      String
-  phone     String?
-  role      String   @default("Maid")
-  idType    String
-  idNumber  String
-  address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model Tenant {
