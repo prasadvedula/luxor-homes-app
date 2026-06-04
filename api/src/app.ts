@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
 import authRouter from './routes/auth'
 import residentsRouter from './routes/residents'
 import electionsRouter from './routes/elections'
@@ -15,6 +16,13 @@ app.use(cors({
   credentials: true,
 }))
 app.use(express.json())
+
+// Serve APK download page and file
+const downloadDir = path.join(__dirname, '../public/download')
+app.use('/download', express.static(downloadDir))
+app.get('/download', (_req, res) => {
+  res.sendFile(path.join(downloadDir, 'index.html'))
+})
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'luxor-homes-api' }))
 
