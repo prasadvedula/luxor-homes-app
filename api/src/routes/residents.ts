@@ -9,14 +9,12 @@ const OWNER_INCLUDE = {
   emergencyContacts: true,
   vehicles: true,
   tenant: true,
-  maids: { orderBy: { createdAt: 'asc' as const } },
   user: { select: { id: true, email: true, registrationStatus: true } },
 }
 
 // Public — needed for registration form (no token yet)
 router.get('/flats', async (_req, res: Response): Promise<void> => {
   const flats = await prisma.flat.findMany({
-    where: { owner: null },
     orderBy: [{ floor: 'asc' }, { number: 'asc' }],
     select: { id: true, floor: true, number: true, label: true },
   })
