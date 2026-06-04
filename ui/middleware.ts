@@ -13,7 +13,8 @@ export default auth((req) => {
     pathname === '/' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/api/auth')
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/debug')
 
   if (!isPublic && !session) {
     return NextResponse.redirect(new URL('/login', req.url))
