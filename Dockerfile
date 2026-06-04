@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache openssl
 
@@ -23,7 +23,7 @@ COPY ui/ ./ui/
 RUN cd ui && NEXT_PUBLIC_API_URL="" npm run build
 
 # ── Runtime image ────────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache openssl
 
