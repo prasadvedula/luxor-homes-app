@@ -17,10 +17,11 @@ COPY api/ ./api/
 RUN cd api && npm run build
 
 # ── UI: install + build ──────────────────────────────────────────────────────
+ARG NEXT_PUBLIC_API_URL=https://luxor-homes-api-production.up.railway.app
 COPY ui/package.json ./ui/
 RUN cd ui && npm install --legacy-peer-deps
 COPY ui/ ./ui/
-RUN cd ui && NEXT_PUBLIC_API_URL="" npm run build
+RUN cd ui && NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} npm run build
 
 # ── Runtime image ────────────────────────────────────────────────────────────
 FROM node:22-alpine
