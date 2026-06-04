@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', flatId: '' })
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+  const API = process.env.NEXT_PUBLIC_API_URL || ''
 
   useEffect(() => {
     fetch(`${API}/residents/flats`).then(r => r.json()).then(setFlats)
