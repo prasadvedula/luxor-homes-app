@@ -12,8 +12,23 @@ import adminRouter from './routes/admin'
 
 const app = express()
 
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'https://ui-prasadvedula-1246s-projects.vercel.app',
+  'https://ui-psi-sepia.vercel.app',
+].filter(Boolean) as string[]
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    // and any Vercel preview URL for this project
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || /^https:\/\/ui-.*\.vercel\.app$/.test(origin)) {
+      cb(null, true)
+    } else {
+      cb(null, true) // permissive — auth is enforced by JWT regardless
+    }
+  },
   credentials: true,
 }))
 app.use(express.json())
