@@ -5,6 +5,6 @@ import { makeClientApi } from './api-client'
 
 export function useApi() {
   const { data: session } = useSession()
-  const token = session?.user?.backendToken ?? null
+  const token = (session as { backendToken?: string } | null)?.backendToken ?? null
   return useMemo(() => makeClientApi(token), [token])
 }
