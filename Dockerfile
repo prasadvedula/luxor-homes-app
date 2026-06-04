@@ -16,7 +16,7 @@ RUN cd api && npm install
 COPY api/ ./api/
 RUN cd api && npm run build
 
-# ── UI: install + build (Next.js standalone) ────────────────────────────────
+# ── UI: install + build ──────────────────────────────────────────────────────
 COPY ui/package.json ./ui/
 RUN cd ui && npm install --legacy-peer-deps
 COPY ui/ ./ui/
@@ -39,9 +39,11 @@ COPY --from=builder /app/api/dist ./api/dist
 COPY --from=builder /app/api/node_modules ./api/node_modules
 COPY --from=builder /app/api/public ./api/public
 
-# Next.js standalone
-COPY --from=builder /app/ui/.next/standalone ./ui
-COPY --from=builder /app/ui/.next/static ./ui/.next/static
+# Next.js (full build — use next start)
+COPY --from=builder /app/ui/.next ./ui/.next
+COPY --from=builder /app/ui/node_modules ./ui/node_modules
+COPY --from=builder /app/ui/package.json ./ui/package.json
+COPY --from=builder /app/ui/next.config.mjs ./ui/next.config.mjs
 COPY --from=builder /app/ui/public ./ui/public
 
 COPY start.sh ./

@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
   // Proxy all Express API routes to localhost:4000 inside the container
   async rewrites() {
     const apiBase = process.env.INTERNAL_API_URL || 'http://localhost:4000'

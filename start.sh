@@ -12,7 +12,7 @@ API_PID=$!
 sleep 2
 
 # Start Next.js on Railway's public port
-PORT=$PUBLIC_PORT HOSTNAME=0.0.0.0 node ui/server.js &
+cd /app/ui && PORT=$PUBLIC_PORT node_modules/.bin/next start -H 0.0.0.0 -p $PUBLIC_PORT &
 UI_PID=$!
 
 echo "API PID=$API_PID (port 4000) | UI PID=$UI_PID (port $PUBLIC_PORT)"
