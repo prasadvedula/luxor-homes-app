@@ -1,23 +1,52 @@
+FROM node:20-alpine AS builder
+
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+
+# ── Shared: root packages + Prisma ──────────────────────────────────────────
+COPY package.json package-lock.json ./
+COPY prisma/ ./prisma/
+RUN npm ci
+RUN npx prisma generate
+
+# ── API: install + build ─────────────────────────────────────────────────────
+COPY api/package.json ./api/package.json
+RUN cd api && npm install
+COPY api/ ./api/
+RUN cd api && npm run build
+
+# ── UI: install + build (Next.js standalone) ────────────────────────────────
+COPY ui/package.json ui/package-lock.json ./ui/
+RUN cd ui && npm ci
+COPY ui/ ./ui/
+RUN cd ui && NEXT_PUBLIC_API_URL="" npm run build
+
+# ── Runtime image ────────────────────────────────────────────────────────────
 FROM node:20-alpine
 
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Root packages — contains Prisma client + schema
-COPY package.json package-lock.json ./
-COPY prisma/ ./prisma/
-RUN npm ci
-RUN npx prisma generate
+# Prisma
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
-# API packages
-COPY api/package.json ./api/package.json
-RUN cd api && npm install
+# Express API
+COPY --from=builder /app/api/dist ./api/dist
+COPY --from=builder /app/api/node_modules ./api/node_modules
+COPY --from=builder /app/api/public ./api/public
 
-# Copy API source (includes public/ assets) and compile TypeScript
-COPY api/ ./api/
-RUN cd api && npm run build
+# Next.js standalone
+COPY --from=builder /app/ui/.next/standalone ./ui
+COPY --from=builder /app/ui/.next/static ./ui/.next/static
+COPY --from=builder /app/ui/public ./ui/public
 
-EXPOSE 4000
+COPY start.sh ./
+RUN chmod +x start.sh
 
-CMD ["node", "api/dist/server.js"]
+EXPOSE 3000
+
+CMD ["./start.sh"]

@@ -1,6 +1,8 @@
 import { auth } from './auth'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+// Empty string = relative URLs, proxied by Next.js rewrites to localhost:4000
+// In local dev, set NEXT_PUBLIC_API_URL=http://localhost:4000
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 // ── Server-side (Server Components, Route Handlers) ─────────────────────────
 export async function serverApi(path: string, options: RequestInit = {}) {
