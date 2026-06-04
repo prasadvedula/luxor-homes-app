@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 const API_BASE = process.env.API_URL || 'http://localhost:4000'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
