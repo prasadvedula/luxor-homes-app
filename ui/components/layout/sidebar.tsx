@@ -37,7 +37,7 @@ export function Sidebar() {
         <div className="relative px-5 py-6 border-b" style={{ borderColor: 'rgba(201,168,76,0.1)' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ boxShadow: '0 4px 16px rgba(201,168,76,0.4)' }}>
-              <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
+              <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="font-display font-bold text-white text-base leading-tight">Luxor Homes</div>
@@ -119,7 +119,7 @@ function MobileHeader() {
       {/* Logo */}
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-          <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
+          <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
         </div>
         <span className="font-display font-bold text-white text-base">Luxor Homes</span>
       </div>

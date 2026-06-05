@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Blue background -->
+  <rect width="1024" height="1024" fill="#1B5299"/>
+
+  <!-- Main building pillar -->
+  <rect x="370" y="140" width="90" height="480" rx="12" fill="#F5BC00"/>
+
+  <!-- Rounded top cap on pillar -->
+  <ellipse cx="415" cy="140" rx="45" ry="45" fill="#F5BC00"/>
+
+  <!-- Small secondary pillar -->
+  <rect x="480" y="260" width="55" height="360" rx="10" fill="#F5BC00"/>
+  <ellipse cx="507" cy="260" rx="27" ry="27" fill="#F5BC00"/>
+
+  <!-- Left arc / embrace curve -->
+  <path d="M 370 380 Q 200 510 370 640" stroke="#F5BC00" stroke-width="52" fill="none" stroke-linecap="round"/>
+
+  <!-- Wave 1 (largest) -->
+  <path d="M 490 370 Q 720 440 680 620 Q 650 730 520 750" stroke="#F5BC00" stroke-width="52" fill="none" stroke-linecap="round"/>
+
+  <!-- Wave 2 -->
+  <path d="M 490 450 Q 680 510 645 660 Q 620 745 510 765" stroke="#F5BC00" stroke-width="40" fill="none" stroke-linecap="round"/>
+
+  <!-- Wave 3 (smallest) -->
+  <path d="M 490 530 Q 640 578 610 698 Q 590 760 500 778" stroke="#F5BC00" stroke-width="28" fill="none" stroke-linecap="round"/>
+</svg>

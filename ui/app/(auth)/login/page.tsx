@@ -37,7 +37,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-            <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
+            <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
           </div>
           <span className="font-display text-xl font-bold text-white">Luxor Homes</span>
         </div>
@@ -57,7 +57,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-fade-up">
           <div className="lg:hidden flex items-center gap-3 mb-10">
             <div className="w-9 h-9 rounded-lg overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-              <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
+              <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
             </div>
             <span className="font-display text-xl font-bold text-white">Luxor Homes</span>
           </div>
