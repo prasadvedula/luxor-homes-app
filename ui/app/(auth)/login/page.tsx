@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Phone } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
@@ -16,14 +16,14 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
-    const res = await signIn('credentials', { email, password, redirect: false })
+    const res = await signIn('credentials', { phone: phone.trim(), password, redirect: false })
     setLoading(false)
     if (res?.error) {
       const msg = res.error ?? ''
       if (msg.includes('pending') || msg.includes('approval') || msg === 'CredentialsSignin' || msg === 'Configuration') {
-        setError('Invalid email or password, or your account is pending admin approval.')
+        setError('Your account is pending admin approval. Please wait.')
       } else {
-        setError('Invalid email or password.')
+        setError('Invalid mobile number or password.')
       }
     } else {
       router.push('/dashboard')
@@ -46,7 +46,7 @@ export default function LoginPage() {
             Welcome back to your <span className="gold-text">community</span>
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: '#7B8FAD' }}>
-            Sign in to access your resident portal — manage visitors, track maintenance, participate in elections and more.
+            Sign in with your registered mobile number to access the resident portal — manage visitors, maintenance, elections and more.
           </p>
         </div>
         <p className="text-xs" style={{ color: '#3A4E6A' }}>© {new Date().getFullYear()} Luxor Homes Residents&apos; Society</p>
@@ -63,7 +63,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="font-display text-3xl font-bold text-white mb-2">Sign In</h1>
-          <p className="text-sm mb-8" style={{ color: '#7B8FAD' }}>Enter your credentials to continue</p>
+          <p className="text-sm mb-8" style={{ color: '#7B8FAD' }}>Use your registered mobile number</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
@@ -72,9 +72,15 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label className="lux-label">Email address</label>
-              <input type="email" className="lux-input" required placeholder="your@email.com"
-                value={email} onChange={e => setEmail(e.target.value)} />
+              <label className="lux-label">Mobile Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#4A5E7A' }} />
+                <input
+                  type="tel" className="lux-input pl-10" required
+                  placeholder="9876543210"
+                  value={phone} onChange={e => setPhone(e.target.value)}
+                />
+              </div>
             </div>
             <div>
               <label className="lux-label">Password</label>

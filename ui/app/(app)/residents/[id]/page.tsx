@@ -5,14 +5,18 @@ import { useParams } from 'next/navigation'
 import {
   ArrowLeft, Phone, Car, AlertCircle, Plus, Trash2, Edit3, Save, X,
   KeyRound, Home, Calendar, IndianRupee, FileText, User,
-  ToggleLeft, ToggleRight, ShieldCheck, CreditCard, UserCheck, UserX,
+  ToggleLeft, ToggleRight, ShieldCheck, CreditCard, UserCheck, UserX, Users,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useApi } from '@/lib/use-api'
 import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
 
 /* ── Types ─────────────────────────────────────────────────── */
+type FamilyMember = { id: string; name: string; phone: string; email: string | null; createdAt: string }
+type FamilyForm = { name: string; phone: string; password: string; relation: string }
+const emptyFamilyForm: FamilyForm = { name: '', phone: '', password: '', relation: 'Spouse' }
+const RELATIONS = ['Spouse', 'Child', 'Parent', 'Sibling', 'Other']
+
 type Tenant = {
   id: string; name: string; phone: string; email: string | null
   moveInDate: string | null; leaseEndDate: string | null
@@ -29,6 +33,7 @@ type Owner = {
   vehicles: { id: string; registration: string; type: string; make: string; color: string }[]
   tenant: Tenant | null
   maids: Maid[]
+  user: { id: string; phone: string; email: string | null; registrationStatus: string; isPrimaryResident: boolean }
 }
 
 /* ── Constants ─────────────────────────────────────────────── */
@@ -77,6 +82,17 @@ export default function ResidentDetailPage() {
   const [editMaidForm, setEditMaidForm] = useState<MaidForm>(emptyMaidForm)
 
   const canEdit = session?.user.role === 'ADMIN' || (owner && owner.id === session?.user.id)
+  const isAdmin = session?.user.role === 'ADMIN'
+  const isPrimaryResident = session?.user.isPrimaryResident ?? true
+
+  // ── Family members ──
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [showFamilyForm, setShowFamilyForm] = useState(false)
+  const [familyForm, setFamilyForm] = useState<FamilyForm>(emptyFamilyForm)
+  const [familyLoading, setFamilyLoading] = useState(false)
+  const [familyError, setFamilyError] = useState('')
+  const [editingFamily, setEditingFamily] = useState<string | null>(null)
+  const [editFamilyName, setEditFamilyName] = useState('')
 
   /* ── Load ─────────────────────────────────────── */
   function applyOwner(d: Owner) {
@@ -96,6 +112,42 @@ export default function ResidentDetailPage() {
   }, [api, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function reload() { api(`/residents/${id}`).then(r => r.json()).then(applyOwner) }
+
+  // Load family members once owner is loaded
+  useEffect(() => {
+    if (!owner) return
+    const qs = isAdmin ? `?primaryId=${owner.user.id}` : ''
+    api(`/residents/family/list${qs}`).then(r => r.ok ? r.json() : []).then(d => setFamilyMembers(Array.isArray(d) ? d : []))
+  }, [api, owner, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function addFamilyMember(e: React.FormEvent) {
+    e.preventDefault(); setFamilyLoading(true); setFamilyError('')
+    const res = await api('/residents/family', { method: 'POST', body: JSON.stringify(familyForm) })
+    setFamilyLoading(false)
+    if (res.ok) {
+      const m = await res.json()
+      setFamilyMembers(prev => [...prev, m])
+      setShowFamilyForm(false); setFamilyForm(emptyFamilyForm)
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setFamilyError(err.error || 'Failed to add member')
+    }
+  }
+
+  async function updateFamilyMember(memberId: string) {
+    const res = await api(`/residents/family/${memberId}`, { method: 'PUT', body: JSON.stringify({ name: editFamilyName }) })
+    if (res.ok) {
+      const updated = await res.json()
+      setFamilyMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updated } : m))
+      setEditingFamily(null)
+    }
+  }
+
+  async function removeFamilyMember(memberId: string) {
+    if (!confirm('Remove this family member?')) return
+    const res = await api(`/residents/family/${memberId}`, { method: 'DELETE' })
+    if (res.ok) setFamilyMembers(prev => prev.filter(m => m.id !== memberId))
+  }
   function setTF(key: keyof TenantForm, val: string) { setTenantForm(f => ({ ...f, [key]: val })) }
   function setMF(key: keyof MaidForm,   val: string) { setMaidForm(f => ({ ...f, [key]: val })) }
   function setEMF(key: keyof MaidForm,  val: string) { setEditMaidForm(f => ({ ...f, [key]: val })) }
@@ -217,6 +269,120 @@ export default function ResidentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Family Members ───────────────────────── */}
+      {(isAdmin || (isPrimaryResident && owner.user.id === session?.user.id)) && (
+        <div className="glass p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" style={{ color: '#4ade80' }} />
+              <p className="text-xs font-bold" style={{ color: '#4A5E7A', letterSpacing: '0.08em' }}>FAMILY MEMBERS</p>
+              {familyMembers.length > 0 && (
+                <span className="badge badge-green ml-1">{familyMembers.length}</span>
+              )}
+            </div>
+            {isPrimaryResident && owner.user.id === session?.user.id && (
+              <button onClick={() => { setShowFamilyForm(v => !v); setFamilyError('') }}
+                className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                style={{ color: showFamilyForm ? '#f87171' : '#C9A84C' }}>
+                {showFamilyForm ? <><X className="w-4 h-4" /> Cancel</> : <><Plus className="w-4 h-4" /> Add Member</>}
+              </button>
+            )}
+          </div>
+
+          {/* Add form */}
+          {showFamilyForm && (
+            <form onSubmit={addFamilyMember} className="mb-5 space-y-3 p-4 rounded-xl animate-fade-up"
+              style={{ background: 'rgba(74,222,128,0.04)', border: '1px solid rgba(74,222,128,0.15)' }}>
+              {familyError && (
+                <div className="text-sm p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>{familyError}</div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="lux-label">Full Name *</label>
+                  <input className="lux-input" required placeholder="Priya Kumar"
+                    value={familyForm.name} onChange={e => setFamilyForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="lux-label">Mobile Number *</label>
+                  <input className="lux-input" required placeholder="9876543210"
+                    value={familyForm.phone} onChange={e => setFamilyForm(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="lux-label">Relationship</label>
+                  <select className="lux-input" value={familyForm.relation}
+                    onChange={e => setFamilyForm(f => ({ ...f, relation: e.target.value }))}>
+                    {RELATIONS.map(r => <option key={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="lux-label">Login Password *</label>
+                  <input type="password" className="lux-input" required minLength={6} placeholder="Min 6 chars"
+                    value={familyForm.password} onChange={e => setFamilyForm(f => ({ ...f, password: e.target.value }))} />
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: '#4A5E7A' }}>They will log in using their mobile number and this password.</p>
+              <div className="flex gap-2">
+                <button type="submit" disabled={familyLoading} className="btn-gold py-2 px-4 text-xs disabled:opacity-60">
+                  {familyLoading ? 'Adding…' : <><Plus className="w-3.5 h-3.5" /> Add Member</>}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Member list */}
+          {familyMembers.length === 0 && !showFamilyForm && (
+            <div className="py-4 text-center">
+              <Users className="w-6 h-6 mx-auto mb-2" style={{ color: '#3A4E6A' }} />
+              <p className="text-sm" style={{ color: '#4A5E7A' }}>No family members added yet.</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            {familyMembers.map(m => (
+              <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.12)' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                  style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
+                  {m.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {editingFamily === m.id ? (
+                    <div className="flex items-center gap-2">
+                      <input className="lux-input py-1 text-sm" value={editFamilyName}
+                        onChange={e => setEditFamilyName(e.target.value)} />
+                      <button onClick={() => updateFamilyMember(m.id)} className="btn-gold py-1 px-3 text-xs">
+                        <Save className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => setEditingFamily(null)} className="btn-ghost py-1 px-2 text-xs">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-white text-sm font-medium">{m.name}</div>
+                      <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: '#7B8FAD' }}>
+                        <Phone className="w-3 h-3" /> {m.phone}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {(isAdmin || isPrimaryResident) && editingFamily !== m.id && (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => { setEditingFamily(m.id); setEditFamilyName(m.name) }}
+                      className="p-1.5 rounded-lg" style={{ background: 'rgba(201,168,76,0.1)', color: '#C9A84C' }}>
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => removeFamilyMember(m.id)}
+                      className="p-1.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Tenant Section ────────────────────────── */}
       <div className="glass p-6" style={(owner.tenant || (editing && isRented)) ? { borderColor: 'rgba(249,115,22,0.3)', background: 'rgba(249,115,22,0.04)' } : {}}>

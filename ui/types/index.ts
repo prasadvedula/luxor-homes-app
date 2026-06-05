@@ -4,6 +4,7 @@ declare module 'next-auth' {
   interface User {
     role: string
     backendToken: string
+    isPrimaryResident: boolean
   }
 
   interface Session {
@@ -13,11 +14,13 @@ declare module 'next-auth' {
       email: string
       role: string
       backendToken: string
+      isPrimaryResident: boolean
     }
   }
 
   interface JWT {
     role: string
     backendToken: string
+    isPrimaryResident: boolean
   }
 }

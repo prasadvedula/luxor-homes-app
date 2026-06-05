@@ -77,14 +77,18 @@ enum FacilityType {
 model User {
   id                 String             @id @default(cuid())
   name               String
-  email              String             @unique
+  phone              String             @unique
+  email              String?            @unique
   password           String
   role               Role               @default(RESIDENT)
-  phone              String?
   registrationStatus RegistrationStatus @default(PENDING)
+  isPrimaryResident  Boolean            @default(true)
+  primaryResidentId  String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
+  primaryResident  User?       @relation("FamilyMembers", fields: [primaryResidentId], references: [id], onDelete: Cascade)
+  familyMembers    User[]      @relation("FamilyMembers")
   owner            Owner?
   visitorApprovals Visitor[]   @relation("ApprovedBy")
   maidApprovals    Maid[]      @relation("MaidApprovedBy")

@@ -9,16 +9,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email:    { label: 'Email',    type: 'email' },
+        phone:    { label: 'Mobile',   type: 'tel' },
+        email:    { label: 'Email',    type: 'email' },   // kept for admin fallback
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        if ((!credentials?.phone && !credentials?.email) || !credentials?.password) return null
 
         const res = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+          body: JSON.stringify({ phone: credentials.phone, email: credentials.email, password: credentials.password }),
         })
 
         if (!res.ok) {
