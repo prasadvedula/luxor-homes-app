@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { Building2, LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut, Bell } from 'lucide-react'
+import { LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { NotificationBell } from './notification-bell'
@@ -36,8 +36,8 @@ export function Sidebar() {
         {/* Logo */}
         <div className="relative px-5 py-6 border-b" style={{ borderColor: 'rgba(201,168,76,0.1)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8C55A)', boxShadow: '0 4px 16px rgba(201,168,76,0.4)' }}>
-              <Building2 className="w-5 h-5" style={{ color: '#050D1A' }} />
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ boxShadow: '0 4px 16px rgba(201,168,76,0.4)' }}>
+              <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="font-display font-bold text-white text-base leading-tight">Luxor Homes</div>
@@ -118,9 +118,8 @@ function MobileHeader() {
 
       {/* Logo */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#C9A84C,#E8C55A)', boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-          <Building2 className="w-4 h-4" style={{ color: '#050D1A' }} />
+        <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
+          <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
         </div>
         <span className="font-display font-bold text-white text-base">Luxor Homes</span>
       </div>

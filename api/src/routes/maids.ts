@@ -24,8 +24,18 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   res.json(maids)
 })
 
-router.post('/', requireRole('ADMIN', 'SECURITY'), async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, phone, idCardType, idCardNumber, flatAssigned, workType } = req.body
+router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
+  const role = req.user!.role
+  let { name, phone, idCardType, idCardNumber, flatAssigned, workType } = req.body
+
+  // Residents can only register for their own flat
+  if (role === 'RESIDENT') {
+    const owner = await prisma.owner.findUnique({ where: { userId: req.user!.id }, include: { flat: true } })
+    if (!owner) { res.status(403).json({ error: 'No flat assigned to your account' }); return }
+    flatAssigned = owner.flat.label
+  } else if (role !== 'ADMIN' && role !== 'SECURITY') {
+    res.status(403).json({ error: 'Forbidden' }); return
+  }
 
   if (!name || !phone || !idCardType || !idCardNumber || !flatAssigned || !workType) {
     res.status(400).json({ error: 'All fields are required' })
@@ -34,6 +44,7 @@ router.post('/', requireRole('ADMIN', 'SECURITY'), async (req: AuthRequest, res:
 
   const maid = await prisma.maid.create({
     data: { name, phone, idCardType, idCardNumber, flatAssigned, workType, status: 'PENDING' },
+    include: { approvedBy: { select: { name: true } } },
   })
   res.status(201).json(maid)
 })

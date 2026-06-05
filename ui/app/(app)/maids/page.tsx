@@ -1,65 +1,64 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { UserCheck, Plus, Check, X, LogOut, CreditCard } from 'lucide-react'
-import { cn, statusColor } from '@/lib/utils'
+import { UserCheck, Plus, Check, X, CreditCard, Clock, LogOut, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApi } from '@/lib/use-api'
 
-const ID_CARD_TYPES = ['Aadhar Card', 'PAN Card', 'Passport', 'Voter ID', 'Driving Licence']
-
+const ID_TYPES = ['Aadhar Card', 'PAN Card', 'Passport', 'Voter ID', 'Driving Licence']
 const WORK_TYPES = ['Housekeeping', 'Cooking', 'Childcare', 'Elderly Care', 'Gardening', 'Other']
 
 type Maid = {
-  id: string
-  name: string
-  phone: string
-  idCardType: string
-  idCardNumber: string
-  flatAssigned: string
-  workType: string
-  status: string
-  entryTime: string | null
-  exitTime: string | null
-  note: string | null
-  createdAt: string
-  approvedBy: { name: string } | null
+  id: string; name: string; phone: string; idCardType: string; idCardNumber: string
+  flatAssigned: string; workType: string; status: string
+  entryTime: string | null; exitTime: string | null; note: string | null
+  createdAt: string; approvedBy: { name: string } | null
 }
 
-const emptyForm = {
-  name: '',
-  phone: '',
-  idCardType: ID_CARD_TYPES[0],
-  idCardNumber: '',
-  flatAssigned: '',
-  workType: WORK_TYPES[0],
+const emptyForm = { name: '', phone: '', idCardType: ID_TYPES[0], idCardNumber: '', flatAssigned: '', workType: WORK_TYPES[0] }
+
+const STATUS_STYLE: Record<string, { label: string; badge: string }> = {
+  PENDING:     { label: 'Pending',    badge: 'badge-yellow' },
+  APPROVED:    { label: 'Approved',   badge: 'badge-green'  },
+  REJECTED:    { label: 'Rejected',   badge: 'badge-red'    },
+  ACTIVE:      { label: 'Active',     badge: 'badge-blue'   },
+  CHECKED_OUT: { label: 'Checked Out',badge: 'badge-gray'   },
 }
 
 export default function MaidsPage() {
   const { data: session } = useSession()
   const api = useApi()
   const [maids, setMaids] = useState<Maid[]>([])
+  const [tab, setTab] = useState<'pending' | 'all'>('pending')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
-  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  const role = session?.user.role
-  const canLog = role === 'ADMIN' || role === 'SECURITY'
-  const canApprove = role === 'ADMIN' || role === 'RESIDENT'
+  const role = session?.user?.role
+  const isAdmin = role === 'ADMIN'
+  const isSecurity = role === 'SECURITY'
+  const isResident = role === 'RESIDENT'
+  const canRegister = isAdmin || isSecurity || isResident
+  const canApprove = isAdmin
 
-  useEffect(() => { api('/maids').then(r => r.ok ? r.json() : []).then((d) => setMaids(Array.isArray(d) ? d : [])) }, [api])
+  useEffect(() => {
+    api('/maids').then(r => r.ok ? r.json() : []).then(d => setMaids(Array.isArray(d) ? d : []))
+  }, [api])
 
-  async function registerMaid(e: React.FormEvent) {
+  async function submitMaid(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
+    setSubmitting(true); setError('')
     const res = await api('/maids', { method: 'POST', body: JSON.stringify(form) })
     if (res.ok) {
       const m = await res.json()
       setMaids(prev => [m, ...prev])
-      setShowForm(false)
-      setForm(emptyForm)
+      setShowForm(false); setForm(emptyForm)
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setError(err.error || 'Failed to submit')
     }
-    setLoading(false)
+    setSubmitting(false)
   }
 
   async function act(id: string, action: string) {
@@ -71,135 +70,178 @@ export default function MaidsPage() {
   }
 
   const pending = maids.filter(m => m.status === 'PENDING')
+  const displayed = tab === 'pending' ? pending : maids
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy-800 flex items-center gap-2">
-            <UserCheck className="w-6 h-6 text-teal-500" /> Maid Management
+          <p className="text-xs font-semibold mb-1" style={{ color: '#C9A84C', letterSpacing: '0.08em' }}>MANAGEMENT</p>
+          <h1 className="font-display text-3xl font-bold text-white flex items-center gap-3">
+            <UserCheck className="w-7 h-7" style={{ color: '#60a5fa' }} /> Maids
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {role === 'SECURITY' ? 'Register and manage maid entries with ID verification' : 'Monitor maids assigned to your flat'}
+          <p className="text-sm mt-1" style={{ color: '#7B8FAD' }}>
+            {isResident ? 'Register your maid — admin will verify and approve' : 'Register and manage maid entries with ID verification'}
           </p>
         </div>
-        {canLog && (
-          <button onClick={() => setShowForm(s => !s)} className="btn-primary flex items-center gap-2 text-sm">
-            <Plus className="w-4 h-4" /> Register Maid
+        {canRegister && !showForm && (
+          <button onClick={() => setShowForm(true)} className="btn-gold">
+            <Plus className="w-4 h-4" />
+            {isResident ? 'Request Maid' : 'Register Maid'}
           </button>
         )}
       </div>
 
-      {showForm && canLog && (
-        <div className="card mb-5">
-          <h2 className="font-semibold text-navy-800 mb-1 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-teal-500" /> Register New Maid
-          </h2>
-          <p className="text-xs text-gray-400 mb-4">ID card details are required for entry verification.</p>
-          <form onSubmit={registerMaid} className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Full Name</label>
-              <input className="input" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Sunita Devi" />
+      {/* Registration form */}
+      {showForm && canRegister && (
+        <div className="glass p-6 space-y-5">
+          <div>
+            <h2 className="font-display text-lg font-bold text-white flex items-center gap-2">
+              <CreditCard className="w-5 h-5" style={{ color: '#C9A84C' }} />
+              {isResident ? 'Request Maid Approval' : 'Register New Maid'}
+            </h2>
+            <p className="text-sm mt-1" style={{ color: '#4A5E7A' }}>
+              {isResident
+                ? 'Submit maid details for your flat — admin will review and approve entry access.'
+                : 'ID card details are required for entry verification.'}
+            </p>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+              {error}
             </div>
-            <div>
-              <label className="label">Phone</label>
-              <input className="input" required value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="9876543210" />
+          )}
+
+          <form onSubmit={submitMaid} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="lux-label">Full Name</label>
+                <input className="lux-input" required placeholder="Sunita Devi"
+                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="lux-label">Phone Number</label>
+                <input className="lux-input" required placeholder="9876543210"
+                  value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div>
+                <label className="lux-label">ID Card Type</label>
+                <select className="lux-input" value={form.idCardType} onChange={e => setForm(f => ({ ...f, idCardType: e.target.value }))}>
+                  {ID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="lux-label">ID Card Number</label>
+                <input className="lux-input" required placeholder="1234 5678 9012"
+                  value={form.idCardNumber} onChange={e => setForm(f => ({ ...f, idCardNumber: e.target.value }))} />
+              </div>
+              {!isResident && (
+                <div>
+                  <label className="lux-label">Flat Assigned</label>
+                  <input className="lux-input" required placeholder="e.g. 214"
+                    value={form.flatAssigned} onChange={e => setForm(f => ({ ...f, flatAssigned: e.target.value }))} />
+                </div>
+              )}
+              <div>
+                <label className="lux-label">Work Type</label>
+                <select className="lux-input" value={form.workType} onChange={e => setForm(f => ({ ...f, workType: e.target.value }))}>
+                  {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="label">ID Card Type</label>
-              <select className="input" value={form.idCardType} onChange={e => setForm(f => ({ ...f, idCardType: e.target.value }))}>
-                {ID_CARD_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label">ID Card Number</label>
-              <input className="input" required value={form.idCardNumber} onChange={e => setForm(f => ({ ...f, idCardNumber: e.target.value }))} placeholder="e.g. 1234 5678 9012" />
-            </div>
-            <div>
-              <label className="label">Flat Assigned</label>
-              <input className="input" required value={form.flatAssigned} onChange={e => setForm(f => ({ ...f, flatAssigned: e.target.value }))} placeholder="e.g. 3B" />
-            </div>
-            <div>
-              <label className="label">Work Type</label>
-              <select className="input" value={form.workType} onChange={e => setForm(f => ({ ...f, workType: e.target.value }))}>
-                {WORK_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="col-span-2 flex gap-3">
-              <button type="submit" disabled={loading} className="btn-primary text-sm disabled:opacity-60">
-                {loading ? 'Registering…' : 'Register Maid'}
+
+            <div className="flex gap-3 pt-1">
+              <button type="submit" disabled={submitting} className="btn-gold disabled:opacity-60">
+                {submitting ? 'Submitting…' : isResident ? 'Submit Request' : 'Register Maid'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setError('') }} className="btn-ghost">
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Pending approvals */}
-      {canApprove && pending.length > 0 && (
-        <div className="mb-6">
-          <h2 className="font-semibold text-navy-800 mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse inline-block" />
-            Pending Approval
-          </h2>
-          <div className="space-y-2">
-            {pending.map(m => (
-              <div key={m.id} className="card border-yellow-200 bg-yellow-50 flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-navy-800">{m.name}</div>
-                  <div className="text-sm text-gray-600">{m.workType} · Flat {m.flatAssigned}</div>
-                  <div className="text-xs text-gray-400 flex gap-3 mt-0.5">
-                    <span>{m.phone}</span>
-                    <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" />{m.idCardType}: {m.idCardNumber}</span>
-                    <span>{format(new Date(m.createdAt), 'dd MMM, hh:mm a')}</span>
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'rgba(7,16,30,0.6)', border: '1px solid rgba(201,168,76,0.12)' }}>
+        {([['pending', `Pending${pending.length ? ` (${pending.length})` : ''}`], ['all', 'All Maids']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)}
+            className="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+            style={tab === key
+              ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' }
+              : { color: '#7B8FAD' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      <div className="space-y-3">
+        {displayed.length === 0 && (
+          <div className="glass p-8 text-center" style={{ color: '#4A5E7A' }}>
+            {tab === 'pending' ? 'No pending maid requests' : 'No maids registered yet'}
+          </div>
+        )}
+
+        {displayed.map(m => {
+          const s = STATUS_STYLE[m.status] ?? { label: m.status, badge: 'badge-gray' }
+          return (
+            <div key={m.id} className="glass p-5">
+              <div className="flex items-start justify-between gap-4">
+                {/* Avatar + info */}
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)' }}>
+                    {m.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-semibold text-sm">{m.name}</span>
+                      <span className={`badge ${s.badge}`}>{s.label}</span>
+                      <span className="badge badge-blue text-xs" style={{ fontSize: '0.65rem' }}>{m.workType}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 text-xs" style={{ color: '#7B8FAD' }}>
+                      <span>Flat {m.flatAssigned}</span>
+                      <span>{m.phone}</span>
+                      <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" />{m.idCardType}: {m.idCardNumber}</span>
+                      {m.entryTime && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />In: {format(new Date(m.entryTime), 'dd MMM, hh:mm a')}</span>}
+                      {m.exitTime && <span className="flex items-center gap-1"><LogOut className="w-3 h-3" />Out: {format(new Date(m.exitTime), 'hh:mm a')}</span>}
+                      {m.approvedBy && <span style={{ color: '#4A5E7A' }}>Approved by {m.approvedBy.name}</span>}
+                      <span style={{ color: '#3A4E6A' }}>{format(new Date(m.createdAt), 'dd MMM yyyy')}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => act(m.id, 'APPROVED')} className="flex items-center gap-1 bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700">
-                    <Check className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => act(m.id, 'REJECTED')} className="flex items-center gap-1 bg-red-100 text-red-700 text-sm px-3 py-1.5 rounded-lg hover:bg-red-200">
-                    <X className="w-3.5 h-3.5" /> Deny
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* All maids log */}
-      <h2 className="font-semibold text-navy-800 mb-3">Maid Log</h2>
-      <div className="space-y-2">
-        {maids.length === 0 && <p className="text-gray-500 text-sm">No maids registered.</p>}
-        {maids.map(m => (
-          <div key={m.id} className="card">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-medium text-navy-800 text-sm">{m.name}</span>
-                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', statusColor(m.status))}>
-                    {m.status.replace('_', ' ')}
-                  </span>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{m.workType}</span>
-                </div>
-                <div className="text-xs text-gray-500 flex gap-3 flex-wrap">
-                  <span>Flat {m.flatAssigned}</span>
-                  <span>{m.phone}</span>
-                  <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" />{m.idCardType}: {m.idCardNumber}</span>
-                  {m.entryTime && <span>In: {format(new Date(m.entryTime), 'hh:mm a')}</span>}
-                  {m.exitTime && <span>Out: {format(new Date(m.exitTime), 'hh:mm a')}</span>}
-                  {m.approvedBy && <span>Approved by {m.approvedBy.name}</span>}
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {canApprove && m.status === 'PENDING' && (
+                    <>
+                      <button onClick={() => act(m.id, 'APPROVED')}
+                        className="btn-gold py-1.5 px-3 text-xs">
+                        <Check className="w-3.5 h-3.5" /> Approve
+                      </button>
+                      <button onClick={() => act(m.id, 'REJECTED')}
+                        className="btn-danger py-1.5 px-3 text-xs">
+                        <X className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </>
+                  )}
+                  {(isAdmin || isSecurity) && m.status === 'APPROVED' && (
+                    <button onClick={() => act(m.id, 'CHECKED_OUT')}
+                      className="btn-ghost py-1.5 px-3 text-xs">
+                      <LogOut className="w-3.5 h-3.5" /> Check Out
+                    </button>
+                  )}
+                  {m.status === 'PENDING' && isResident && (
+                    <span className="text-xs" style={{ color: '#4A5E7A' }}>Awaiting admin review</span>
+                  )}
                 </div>
               </div>
-              {canLog && m.status === 'APPROVED' && (
-                <button onClick={() => act(m.id, 'CHECKED_OUT')} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 ml-2">
-                  <LogOut className="w-3 h-3" /> Check Out
-                </button>
-              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

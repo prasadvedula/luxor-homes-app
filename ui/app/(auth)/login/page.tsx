@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Building2, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -36,8 +36,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col justify-between w-[42%] p-12 border-r relative overflow-hidden" style={{ borderColor: 'rgba(201,168,76,0.12)' }}>
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8C55A)' }}>
-            <Building2 className="w-5 h-5" style={{ color: '#050D1A' }} />
+          <div className="w-9 h-9 rounded-lg overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
+            <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
           </div>
           <span className="font-display text-xl font-bold text-white">Luxor Homes</span>
         </div>
@@ -56,8 +56,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md animate-fade-up">
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8C55A)' }}>
-              <Building2 className="w-5 h-5" style={{ color: '#050D1A' }} />
+            <div className="w-9 h-9 rounded-lg overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
+              <img src="/luxor-icon.png" alt="Luxor Homes" className="w-full h-full object-cover" />
             </div>
             <span className="font-display text-xl font-bold text-white">Luxor Homes</span>
           </div>
