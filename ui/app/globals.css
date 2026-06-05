@@ -94,15 +94,19 @@ body {
 .btn-sm { padding: 6px 14px; font-size: .8rem; }
 
 /* ── Inputs ─────────────────────────────────────── */
-.lux-input {
-  width: 100%; background: rgba(7,16,30,.8);
-  border: 1px solid rgba(201,168,76,.2); border-radius: 8px;
-  padding: 10px 14px; color: var(--text); font-size: .875rem; outline: none;
-  transition: border-color .2s, box-shadow .2s;
+/* Placed in @layer components so Tailwind utility classes (pl-*, pr-*) take precedence,
+   preventing icon images from overlapping typed text in inputs that have left/right icons. */
+@layer components {
+  .lux-input {
+    width: 100%; background: rgba(7,16,30,.8);
+    border: 1px solid rgba(201,168,76,.2); border-radius: 8px;
+    padding: 10px 14px; color: var(--text); font-size: .875rem; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .lux-input::placeholder { color: var(--faint); }
+  .lux-input:focus { border-color: rgba(201,168,76,.55); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
+  .lux-input option { background: #0B1628; }
 }
-.lux-input::placeholder { color: var(--faint); }
-.lux-input:focus { border-color: rgba(201,168,76,.55); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
-.lux-input option { background: #0B1628; }
 
 .lux-label {
   display: block; font-size: .7rem; font-weight: 600;
