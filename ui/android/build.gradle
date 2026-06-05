@@ -24,6 +24,18 @@ allprojects {
     }
 }
 
+// Force Java 17 on every subproject after it has been configured.
+// Needed because capacitor-android sets sourceCompatibility 21 in its own build.gradle
+// and this machine only has JDK 17.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android.compileOptions.sourceCompatibility = JavaVersion.VERSION_17
+            project.android.compileOptions.targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
