@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth'
+import bcrypt from 'bcryptjs'
 
 const router = Router()
 router.use(authenticate)
@@ -43,6 +44,17 @@ router.post('/approve-user', async (req: AuthRequest, res: Response): Promise<vo
     data: { registrationStatus: action },
   })
   res.json({ id: user.id, status: user.registrationStatus })
+})
+
+// Admin reset a user's password
+router.post('/reset-password', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { userId, newPassword } = req.body
+  if (!userId || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: 'userId and newPassword (min 6 chars) required' }); return
+  }
+  const hashed = await bcrypt.hash(newPassword, 10)
+  await prisma.user.update({ where: { id: userId }, data: { password: hashed } })
+  res.json({ success: true })
 })
 
 // Delete a resident (owner) — cascades to family members via DB

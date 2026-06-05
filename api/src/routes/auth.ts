@@ -7,6 +7,15 @@ import { authenticate, AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
+// Normalize phone: strip non-digits, remove leading 91 country code if 12 digits
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  // +91 prefix makes it 12 digits starting with 91 — strip the country code
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2)
+  if (digits.length === 11 && digits.startsWith('0'))  return digits.slice(1)
+  return digits
+}
+
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { phone, email, password } = req.body
 
@@ -17,7 +26,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 
   // Residents log in by phone; admin/security can use email as fallback
   let user = phone
-    ? await prisma.user.findUnique({ where: { phone: String(phone).trim() } })
+    ? await prisma.user.findUnique({ where: { phone: normalizePhone(String(phone)) } })
     : null
 
   if (!user && email) {
@@ -66,7 +75,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   }
 
   const { name, phone, email, password, flatId } = parsed.data
-  const cleanPhone = phone.trim()
+  const cleanPhone = normalizePhone(phone)
   const cleanEmail = email?.trim().toLowerCase() || null
 
   const existingPhone = await prisma.user.findUnique({ where: { phone: cleanPhone } })

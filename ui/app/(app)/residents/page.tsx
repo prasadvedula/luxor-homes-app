@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Users, Phone, Car, ChevronRight, Check, X, Search, Home, KeyRound, Trash2 } from 'lucide-react'
+import { Users, Phone, Car, ChevronRight, Check, X, Search, Home, KeyRound, Trash2, KeySquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/lib/use-api'
 
@@ -31,6 +31,9 @@ export default function ResidentsPage() {
   const [search, setSearch] = useState('')
   const [filterRented, setFilterRented] = useState<'all' | 'rented' | 'owner'>('all')
   const [loading, setLoading] = useState(true)
+  const [resetUserId, setResetUserId] = useState<string | null>(null)
+  const [resetPwd, setResetPwd] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
   const isAdmin = session?.user.role === 'ADMIN'
 
   useEffect(() => {
@@ -48,6 +51,14 @@ export default function ResidentsPage() {
     if (!confirm(`Remove ${name} and all their family members from the society? This cannot be undone.`)) return
     const res = await api(`/admin/residents/${ownerId}`, { method: 'DELETE' })
     if (res.ok) setOwners(prev => prev.filter(o => o.id !== ownerId))
+  }
+
+  async function handleResetPassword(userId: string) {
+    if (!resetPwd || resetPwd.length < 6) return
+    setResetLoading(true)
+    const res = await api('/admin/reset-password', { method: 'POST', body: JSON.stringify({ userId, newPassword: resetPwd }) })
+    setResetLoading(false)
+    if (res.ok) { setResetUserId(null); setResetPwd('') }
   }
 
   const rentedCount = owners.filter(o => o.tenant).length
@@ -98,18 +109,45 @@ export default function ResidentsPage() {
         <div className="space-y-3">
           {pending.length===0 && <div className="glass p-8 text-center" style={{ color:'#4A5E7A' }}>No pending registrations</div>}
           {pending.map(u => (
-            <div key={u.id} className="glass p-5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background:'rgba(201,168,76,0.15)', color:'#C9A84C', border:'1px solid rgba(201,168,76,0.25)' }}>{u.name[0]}</div>
-                <div>
-                  <div className="text-white font-medium">{u.name}</div>
-                  <div className="text-xs mt-0.5" style={{ color:'#7B8FAD' }}>{u.email} · Flat {u.owner?.flat.label ?? '?'}</div>
+            <div key={u.id} className="glass p-5 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background:'rgba(201,168,76,0.15)', color:'#C9A84C', border:'1px solid rgba(201,168,76,0.25)' }}>{u.name[0]}</div>
+                  <div>
+                    <div className="text-white font-medium">{u.name}</div>
+                    <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color:'#7B8FAD' }}>
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{u.phone}</span>
+                      <span>· Flat {u.owner?.flat.label ?? '?'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleApproval(u.id,'APPROVED')} className="btn-gold py-2 px-4 text-xs"><Check className="w-3.5 h-3.5" /> Approve</button>
+                  <button onClick={() => handleApproval(u.id,'REJECTED')} className="btn-danger py-2 px-4 text-xs"><X className="w-3.5 h-3.5" /> Reject</button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleApproval(u.id,'APPROVED')} className="btn-gold py-2 px-4 text-xs"><Check className="w-3.5 h-3.5" /> Approve</button>
-                <button onClick={() => handleApproval(u.id,'REJECTED')} className="btn-danger py-2 px-4 text-xs"><X className="w-3.5 h-3.5" /> Reject</button>
-              </div>
+
+              {/* Reset password inline */}
+              {resetUserId === u.id ? (
+                <div className="flex items-center gap-2 pl-14">
+                  <input type="password" className="lux-input py-1.5 text-sm flex-1"
+                    placeholder="New password (min 6 chars)" value={resetPwd}
+                    onChange={e => setResetPwd(e.target.value)} />
+                  <button onClick={() => handleResetPassword(u.id)} disabled={resetLoading || resetPwd.length < 6}
+                    className="btn-gold py-1.5 px-3 text-xs disabled:opacity-50">
+                    {resetLoading ? '…' : 'Set'}
+                  </button>
+                  <button onClick={() => { setResetUserId(null); setResetPwd('') }} className="btn-ghost py-1.5 px-2 text-xs">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => { setResetUserId(u.id); setResetPwd('') }}
+                  className="ml-14 flex items-center gap-1.5 text-xs font-medium"
+                  style={{ color:'#7B8FAD' }}>
+                  <KeySquare className="w-3.5 h-3.5" /> Set login password
+                </button>
+              )}
             </div>
           ))}
         </div>
