@@ -17,7 +17,8 @@ export default async function DashboardPage() {
   const session = await auth()
   const isAdmin = session?.user.role === 'ADMIN'
   const res = await serverApi('/admin/stats').catch(() => null)
-  const stats: Stats = res?.ok ? await res.json() : { residents: 0, rentedFlats: 0, pendingUsers: 0, openMaintenance: 0, pendingVisitors: 0, activeElection: null }
+  const statsDefault: Stats = { residents: 0, rentedFlats: 0, pendingUsers: 0, openMaintenance: 0, pendingVisitors: 0, activeElection: null }
+  const stats: Stats = res?.ok ? await res.json().catch(() => statsDefault) : statsDefault
   const { residents, rentedFlats, pendingUsers, openMaintenance, pendingVisitors, activeElection } = stats
 
   const cards = [

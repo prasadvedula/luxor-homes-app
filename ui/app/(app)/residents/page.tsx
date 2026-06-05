@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Users, Phone, Car, ChevronRight, Check, X, Search, Home, KeyRound } from 'lucide-react'
+import { Users, Phone, Car, ChevronRight, Check, X, Search, Home, KeyRound, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/lib/use-api'
 
@@ -42,6 +42,12 @@ export default function ResidentsPage() {
     await api('/admin/approve-user', { method: 'POST', body: JSON.stringify({ userId, action }) })
     setPending(prev => prev.filter(u => u.id !== userId))
     if (action === 'APPROVED') api('/residents').then(r => r.json()).then(setOwners)
+  }
+
+  async function handleDeleteResident(ownerId: string, name: string) {
+    if (!confirm(`Remove ${name} and all their family members from the society? This cannot be undone.`)) return
+    const res = await api(`/admin/residents/${ownerId}`, { method: 'DELETE' })
+    if (res.ok) setOwners(prev => prev.filter(o => o.id !== ownerId))
   }
 
   const rentedCount = owners.filter(o => o.tenant).length
@@ -137,50 +143,61 @@ export default function ResidentsPage() {
             <div className="space-y-2">
               {filtered.length===0 && <div className="glass p-8 text-center" style={{ color:'#4A5E7A' }}>No residents found</div>}
               {filtered.map(owner => (
-                <Link key={owner.id} href={`/residents/${owner.id}`} className="glass p-4 flex items-center gap-4 group" style={{ textDecoration:'none' }}>
-                  {/* Flat badge */}
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0 relative"
-                    style={ owner.tenant ? { background:'rgba(249,115,22,0.12)', color:'#fb923c', border:'1px solid rgba(249,115,22,0.25)' } : { background:'rgba(201,168,76,0.1)', color:'#C9A84C', border:'1px solid rgba(201,168,76,0.2)' }}>
-                    {owner.flat.label}
-                    {owner.tenant && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ background:'rgba(249,115,22,0.9)', border:'1px solid #050D1A' }}>
-                        <KeyRound className="w-2.5 h-2.5 text-white" />
-                      </span>
-                    )}
-                  </div>
+                <div key={owner.id} className="glass flex items-center group">
+                  <Link href={`/residents/${owner.id}`} className="flex items-center gap-4 flex-1 p-4 min-w-0" style={{ textDecoration:'none' }}>
+                    {/* Flat badge */}
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0 relative"
+                      style={ owner.tenant ? { background:'rgba(249,115,22,0.12)', color:'#fb923c', border:'1px solid rgba(249,115,22,0.25)' } : { background:'rgba(201,168,76,0.1)', color:'#C9A84C', border:'1px solid rgba(201,168,76,0.2)' }}>
+                      {owner.flat.label}
+                      {owner.tenant && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ background:'rgba(249,115,22,0.9)', border:'1px solid #050D1A' }}>
+                          <KeyRound className="w-2.5 h-2.5 text-white" />
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    {/* Owner row */}
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-white font-medium text-sm">{owner.name}</span>
-                      <span className="badge badge-blue text-xs" style={{ padding:'1px 6px', fontSize:'0.6rem' }}>Owner</span>
-                    </div>
-                    <div className="text-xs flex items-center gap-3 mb-1" style={{ color:'#7B8FAD' }}>
-                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{owner.phone}</span>
-                      {owner.vehicles.length>0 && <span className="flex items-center gap-1"><Car className="w-3 h-3" />{owner.vehicles.length}v</span>}
-                      <span style={{ color:'#3A4E6A' }}>Fl.{owner.flat.floor}</span>
-                    </div>
-                    {/* Tenant row */}
-                    {owner.tenant && (
-                      <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor:'rgba(249,115,22,0.15)' }}>
-                        <KeyRound className="w-3 h-3 flex-shrink-0" style={{ color:'#fb923c' }} />
-                        <span className="text-xs font-medium" style={{ color:'#fb923c' }}>Tenant:</span>
-                        <span className="text-xs text-white">{owner.tenant.name}</span>
-                        <span className="text-xs" style={{ color:'#7B8FAD' }}>{owner.tenant.phone}</span>
-                        {owner.tenant.rentAmount && <span className="text-xs" style={{ color:'#4A5E7A' }}>₹{owner.tenant.rentAmount.toLocaleString()}/mo</span>}
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-white font-medium text-sm">{owner.name}</span>
+                        <span className="badge badge-blue text-xs" style={{ padding:'1px 6px', fontSize:'0.6rem' }}>Owner</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="text-xs flex items-center gap-3 mb-1" style={{ color:'#7B8FAD' }}>
+                        <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{owner.phone}</span>
+                        {owner.vehicles.length>0 && <span className="flex items-center gap-1"><Car className="w-3 h-3" />{owner.vehicles.length}v</span>}
+                        <span style={{ color:'#3A4E6A' }}>Fl.{owner.flat.floor}</span>
+                      </div>
+                      {owner.tenant && (
+                        <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor:'rgba(249,115,22,0.15)' }}>
+                          <KeyRound className="w-3 h-3 flex-shrink-0" style={{ color:'#fb923c' }} />
+                          <span className="text-xs font-medium" style={{ color:'#fb923c' }}>Tenant:</span>
+                          <span className="text-xs text-white">{owner.tenant.name}</span>
+                          <span className="text-xs" style={{ color:'#7B8FAD' }}>{owner.tenant.phone}</span>
+                          {owner.tenant.rentAmount && <span className="text-xs" style={{ color:'#4A5E7A' }}>₹{owner.tenant.rentAmount.toLocaleString()}/mo</span>}
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {owner.tenant
-                      ? <span className="badge badge-orange">Rented</span>
-                      : <span className={cn('badge', statusBadge[owner.user.registrationStatus]??'badge-gray')}>{owner.user.registrationStatus.toLowerCase()}</span>
-                    }
-                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color:'#C9A84C' }} />
-                  </div>
-                </Link>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {owner.tenant
+                        ? <span className="badge badge-orange">Rented</span>
+                        : <span className={cn('badge', statusBadge[owner.user.registrationStatus]??'badge-gray')}>{owner.user.registrationStatus.toLowerCase()}</span>
+                      }
+                      <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color:'#C9A84C' }} />
+                    </div>
+                  </Link>
+
+                  {/* Admin delete button */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteResident(owner.id, owner.name)}
+                      className="p-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color:'#f87171' }}
+                      title="Remove resident">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}

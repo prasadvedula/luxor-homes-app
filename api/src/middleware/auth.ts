@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
 export interface AuthRequest extends Request {
-  user?: { id: string; email: string; role: string; name: string }
+  user?: { id: string; email?: string; phone?: string; role: string; name: string; isPrimaryResident?: boolean }
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -14,7 +14,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
   try {
     const token = header.slice(7)
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: string; email: string; role: string; name: string
+      id: string; email?: string; phone?: string; role: string; name: string; isPrimaryResident?: boolean
     }
     req.user = payload
     next()

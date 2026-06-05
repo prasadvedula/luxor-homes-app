@@ -45,4 +45,18 @@ router.post('/approve-user', async (req: AuthRequest, res: Response): Promise<vo
   res.json({ id: user.id, status: user.registrationStatus })
 })
 
+// Delete a resident (owner) — cascades to family members via DB
+router.delete('/residents/:ownerId', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { ownerId } = req.params
+  const owner = await prisma.owner.findUnique({
+    where: { id: ownerId },
+    select: { userId: true, flat: { select: { label: true } } },
+  })
+  if (!owner) { res.status(404).json({ error: 'Resident not found' }); return }
+
+  // Delete the user — cascades to owner, family members (primaryResidentId cascade)
+  await prisma.user.delete({ where: { id: owner.userId } })
+  res.json({ success: true, flat: owner.flat.label })
+})
+
 export default router

@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation'
 import {
   ArrowLeft, Phone, Car, AlertCircle, Plus, Trash2, Edit3, Save, X,
   KeyRound, Home, Calendar, IndianRupee, FileText, User,
-  ToggleLeft, ToggleRight, Users,
+  ToggleLeft, ToggleRight, Users, UserX,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useApi } from '@/lib/use-api'
 import { format } from 'date-fns'
 
@@ -37,6 +38,7 @@ const emptyTenantForm: TenantForm = { name:'', phone:'', email:'', moveInDate:''
 /* ══════════════════════════════════════════════════════════════ */
 export default function ResidentDetailPage() {
   const params  = useParams()
+  const router  = useRouter()
   const { data: session } = useSession()
   const api     = useApi()
   const id      = params.id as string
@@ -139,6 +141,12 @@ export default function ResidentDetailPage() {
     if (res.ok) setFamilyMembers(prev => prev.filter(m => m.id !== memberId))
   }
 
+  async function deleteResident() {
+    if (!confirm(`Remove ${owner?.name} and all their family members from the society? This cannot be undone.`)) return
+    const res = await api(`/admin/residents/${id}`, { method: 'DELETE' })
+    if (res.ok) router.push('/residents')
+  }
+
   /* ── Render ── */
   if (!owner) return (
     <div className="flex items-center justify-center h-64">
@@ -175,11 +183,19 @@ export default function ResidentDetailPage() {
             <p className="text-sm mt-0.5" style={{ color: '#7B8FAD' }}>Flat {owner.flat.label} · Floor {owner.flat.floor}</p>
           </div>
         </div>
-        {canEdit && !editing && (
-          <button onClick={() => setEditing(true)} className="btn-ghost py-2 px-4 text-sm flex-shrink-0">
-            <Edit3 className="w-3.5 h-3.5" /> Edit
-          </button>
-        )}
+        <div className="flex gap-2 flex-shrink-0">
+          {canEdit && !editing && (
+            <button onClick={() => setEditing(true)} className="btn-ghost py-2 px-4 text-sm">
+              <Edit3 className="w-3.5 h-3.5" /> Edit
+            </button>
+          )}
+          {isAdmin && !editing && (
+            <button onClick={deleteResident} className="py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+              <UserX className="w-3.5 h-3.5" /> Remove
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Owner Contact ── */}
