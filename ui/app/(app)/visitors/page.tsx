@@ -51,13 +51,15 @@ function groupBy<T>(arr: T[], key: (item: T) => string): [string, T[]][] {
 
 // ── Web Audio chime (no audio file needed) ─────────────────────────────────
 function playChime(audioCtxRef: React.MutableRefObject<AudioContext | null>, type: 'approved' | 'rejected') {
+  // Vibration is always reliable on Android — no permission or gesture required.
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate(type === 'approved' ? [200, 80, 200, 80, 400] : [500, 100, 200])
+  }
+
+  // Web Audio only works after AudioContext has been unlocked by a prior user gesture.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Ctx: typeof AudioContext = window.AudioContext ?? (window as any).webkitAudioContext
-    if (!Ctx) return
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx()
     const ctx = audioCtxRef.current
-    if (ctx.state === 'suspended') ctx.resume()
+    if (!ctx || ctx.state !== 'running') return
 
     // Approved: ascending C5-E5-G5-C6  |  Rejected: descending G5-E5-C5
     const notes = type === 'approved'
@@ -250,7 +252,16 @@ export default function VisitorsPage() {
     const alert = alerts[0] ?? null
 
     return (
-      <div className="space-y-6">
+      // Any tap unlocks AudioContext for subsequent chimes (Android autoplay policy).
+      <div className="space-y-6" onClick={() => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const Ctx: typeof AudioContext = window.AudioContext ?? (window as any).webkitAudioContext
+          if (!Ctx) return
+          if (!audioCtxRef.current) audioCtxRef.current = new Ctx()
+          if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume()
+        } catch { /* ignore */ }
+      }}>
 
         {/* ── Approval alert banner (slides in just below mobile header) ── */}
         {alert && (
