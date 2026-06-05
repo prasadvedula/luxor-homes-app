@@ -1,12 +1,8 @@
 'use client'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { useMemo } from 'react'
 import { makeClientApi } from './api-client'
 
-// Stub returned when session is still loading — returns empty array so
-// components don't crash calling .map() on an error object from a 401.
-// When the real token arrives, useMemo recreates the function and
-// the page's useEffect re-fires with auth.
 const emptyApi = (_path: string, _options?: RequestInit) =>
   Promise.resolve(new Response('[]', {
     status: 200,
@@ -16,5 +12,20 @@ const emptyApi = (_path: string, _options?: RequestInit) =>
 export function useApi() {
   const { data: session } = useSession()
   const token = session?.user?.backendToken ?? null
-  return useMemo(() => token ? makeClientApi(token) : emptyApi, [token])
+
+  return useMemo(() => {
+    if (!token) return emptyApi
+
+    const base = makeClientApi(token)
+
+    // Wrap every call: if the API rejects with 401 the session/token is stale
+    // — sign out immediately so the user can log back in cleanly.
+    return async function guardedApi(path: string, options?: RequestInit) {
+      const res = await base(path, options)
+      if (res.status === 401) {
+        await signOut({ callbackUrl: '/login' })
+      }
+      return res
+    }
+  }, [token])
 }

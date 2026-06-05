@@ -77,10 +77,10 @@ export default function ResidentDetailPage() {
   }
 
   useEffect(() => {
-    api(`/residents/${id}`).then(r => r.json()).then(applyOwner)
+    api(`/residents/${id}`).then(r => r.ok ? r.json() : null).then(d => { if (d) applyOwner(d) })
   }, [api, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function reload() { api(`/residents/${id}`).then(r => r.json()).then(applyOwner) }
+  function reload() { api(`/residents/${id}`).then(r => r.ok ? r.json() : null).then(d => { if (d) applyOwner(d) }) }
 
   /* ── Load family members ── */
   useEffect(() => {
