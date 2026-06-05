@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   ShieldCheck, Plus, LogOut, RefreshCw, Clock, User,
@@ -20,8 +20,11 @@ type Visitor = {
   exitTime: string | null
   note: string | null
   createdAt: string
+  updatedAt: string
   approvedBy: { name: string } | null
 }
+
+type AlertEvent = { visitor: Visitor; type: 'approved' | 'rejected' }
 
 const statusBadge: Record<string, string> = {
   PENDING: 'badge-yellow', APPROVED: 'badge-green', REJECTED: 'badge-red', CHECKED_OUT: 'badge-gray',
@@ -46,9 +49,42 @@ function groupBy<T>(arr: T[], key: (item: T) => string): [string, T[]][] {
   return Array.from(map.entries())
 }
 
+// ── Web Audio chime (no audio file needed) ─────────────────────────────────
+function playChime(audioCtxRef: React.MutableRefObject<AudioContext | null>, type: 'approved' | 'rejected') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Ctx: typeof AudioContext = window.AudioContext ?? (window as any).webkitAudioContext
+    if (!Ctx) return
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx()
+    const ctx = audioCtxRef.current
+    if (ctx.state === 'suspended') ctx.resume()
+
+    // Approved: ascending C5-E5-G5-C6  |  Rejected: descending G5-E5-C5
+    const notes = type === 'approved'
+      ? [523.25, 659.25, 783.99, 1046.5]
+      : [783.99, 659.25, 523.25]
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const t = ctx.currentTime + i * 0.18
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.3, t + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55)
+      osc.start(t)
+      osc.stop(t + 0.65)
+    })
+  } catch { /* AudioContext blocked until user gesture — silent fail */ }
+}
+
 export default function VisitorsPage() {
   const { data: session } = useSession()
   const api = useApi()
+
   const [visitors, setVisitors] = useState<Visitor[]>([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -59,20 +95,45 @@ export default function VisitorsPage() {
   const [flatFilter, setFlatFilter] = useState('ALL')
   const [notifState, setNotifState] = useState<'default' | 'granted' | 'denied'>('default')
 
-  const role = session?.user?.role
+  // Gate-view alert state
+  const [alerts, setAlerts] = useState<AlertEvent[]>([])
+  const statusMap = useRef(new Map<string, string>())   // id → last known status
+  const initialized = useRef(false)
+  const audioCtxRef = useRef<AudioContext | null>(null)
 
+  const role = session?.user?.role
+  const isGate = role === 'SECURITY' || role === 'ADMIN'
+
+  // ── Sync browser Notification permission state ──────────────────────────
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setNotifState(Notification.permission as 'default' | 'granted' | 'denied')
     }
   }, [])
 
+  // ── Auto-request notification permission for gate officers ──────────────
+  useEffect(() => {
+    if (!isGate) return
+    if (typeof Notification === 'undefined') return
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(p => {
+        setNotifState(p as 'default' | 'granted' | 'denied')
+      })
+    }
+  }, [isGate])
+
+  // ── Initial fetch — seeds statusMap so existing visitors don't alert ─────
   const fetchVisitors = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
     const res = await api('/visitors')
     if (res.ok) {
-      const data = await res.json()
+      const data: Visitor[] = await res.json()
       setVisitors(Array.isArray(data) ? data : [])
+      // Seed statusMap only once — prevents false alerts on first load
+      if (!initialized.current) {
+        data.forEach(v => statusMap.current.set(v.id, v.status))
+        initialized.current = true
+      }
     }
     setRefreshing(false)
     setPageLoading(false)
@@ -80,12 +141,81 @@ export default function VisitorsPage() {
 
   useEffect(() => { fetchVisitors() }, [fetchVisitors])
 
+  // ── Immediately re-fetch when app comes back to foreground ──────────────
+  useEffect(() => {
+    if (!isGate) return
+    const onVisible = () => { if (!document.hidden) fetchVisitors(true) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [isGate, fetchVisitors])
+
+  // ── 1-second poll: detect resident approvals / rejections ────────────────
+  useEffect(() => {
+    if (!isGate) return
+
+    const poll = async () => {
+      if (!initialized.current) return
+      const res = await api('/visitors')
+      if (!res.ok) return
+      const data: Visitor[] = await res.json()
+
+      const newAlerts: AlertEvent[] = []
+
+      data.forEach(v => {
+        const prev = statusMap.current.get(v.id)
+        if (prev === 'PENDING') {
+          if (v.status === 'APPROVED') newAlerts.push({ visitor: v, type: 'approved' })
+          else if (v.status === 'REJECTED') newAlerts.push({ visitor: v, type: 'rejected' })
+        }
+        statusMap.current.set(v.id, v.status)
+      })
+
+      setVisitors(Array.isArray(data) ? data : [])
+
+      if (newAlerts.length > 0) {
+        setAlerts(prev => [...prev, ...newAlerts])
+        playChime(audioCtxRef, newAlerts[0].type)
+
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          newAlerts.forEach(({ visitor, type }) => {
+            new Notification(
+              type === 'approved'
+                ? `✅ Entry Approved — Flat ${visitor.flatToVisit}`
+                : `❌ Entry Denied — Flat ${visitor.flatToVisit}`,
+              {
+                body: `${visitor.name}\n${visitor.purpose} · ${visitor.phone}`,
+                icon: '/luxor-icon.svg',
+                badge: '/luxor-icon.svg',
+                tag: `visitor-${visitor.id}`,
+                requireInteraction: true,
+                silent: false,
+              }
+            )
+          })
+        }
+      }
+    }
+
+    const timer = setInterval(poll, 1000)
+    return () => clearInterval(timer)
+  }, [isGate, api])
+
+  // ── Auto-dismiss oldest alert after 12 seconds ───────────────────────────
+  useEffect(() => {
+    if (alerts.length === 0) return
+    const t = setTimeout(() => setAlerts(prev => prev.slice(1)), 12000)
+    return () => clearTimeout(t)
+  }, [alerts])
+
+  // ── Visitor actions ──────────────────────────────────────────────────────
   async function logVisitor(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     const res = await api('/visitors', { method: 'POST', body: JSON.stringify(form) })
     if (res.ok) {
-      const v = await res.json()
+      const v: Visitor = await res.json()
+      // Add to statusMap immediately so the poll won't false-alert on it
+      statusMap.current.set(v.id, v.status)
       setVisitors(p => [v, ...p])
       setShowForm(false)
       setForm(emptyForm)
@@ -96,30 +226,104 @@ export default function VisitorsPage() {
   async function act(id: string, action: string) {
     const res = await api(`/visitors/${id}`, { method: 'PATCH', body: JSON.stringify({ action }) })
     if (res.ok) {
-      const u = await res.json()
+      const u: Visitor = await res.json()
+      statusMap.current.set(u.id, u.status)
       setVisitors(p => p.map(v => v.id === id ? u : v))
     }
   }
 
-  // Derived lists
+  // ── Derived lists ────────────────────────────────────────────────────────
   const insideNow      = visitors.filter(v => v.status === 'APPROVED')
   const pendingVisitors = visitors.filter(v => v.status === 'PENDING')
   const history        = visitors.filter(v => v.status === 'CHECKED_OUT' || v.status === 'REJECTED')
   const todayCount     = visitors.filter(v => isToday(new Date(v.createdAt))).length
 
-  // History filters
   const historyFlats    = Array.from(new Set(history.map(v => v.flatToVisit))).sort()
   const filteredHistory = flatFilter === 'ALL' ? history : history.filter(v => v.flatToVisit === flatFilter)
-  const grouped         = groupMode === 'date'
+  const grouped = groupMode === 'date'
     ? groupBy(filteredHistory, v => dateGroup(v.createdAt))
     : [...groupBy(filteredHistory, v => v.flatToVisit)].sort(([a], [b]) => a.localeCompare(b))
 
-  // ── GATE VIEW — Security officers and admins ──────────────────────────────
-  if (role === 'SECURITY' || role === 'ADMIN') {
+  // ── GATE VIEW (SECURITY + ADMIN) ─────────────────────────────────────────
+  if (isGate) {
     const canApprove = role === 'ADMIN'
+    const alert = alerts[0] ?? null
 
     return (
       <div className="space-y-6">
+
+        {/* ── Approval alert banner (slides in just below mobile header) ── */}
+        {alert && (
+          <div
+            className="fixed left-3 right-3 z-50 animate-scale-in"
+            style={{ top: '68px' }}
+          >
+            <div
+              className="rounded-2xl p-4"
+              style={{
+                background: alert.type === 'approved' ? 'rgba(34,197,94,0.13)' : 'rgba(239,68,68,0.13)',
+                border: `1.5px solid ${alert.type === 'approved' ? 'rgba(34,197,94,0.45)' : 'rgba(239,68,68,0.45)'}`,
+                boxShadow: alert.type === 'approved'
+                  ? '0 8px 32px rgba(34,197,94,0.22), 0 0 0 1px rgba(34,197,94,0.12)'
+                  : '0 8px 32px rgba(239,68,68,0.22), 0 0 0 1px rgba(239,68,68,0.12)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+              }}
+            >
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{alert.type === 'approved' ? '✅' : '❌'}</span>
+                  <div>
+                    <p className="font-bold text-white text-sm leading-tight">
+                      {alert.type === 'approved' ? 'Entry Approved by Resident' : 'Entry Denied by Resident'}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: alert.type === 'approved' ? '#4ade80' : '#f87171' }}>
+                      Flat {alert.visitor.flatToVisit} · {format(new Date(alert.visitor.createdAt), 'hh:mm a')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAlerts(prev => prev.slice(1))}
+                  className="p-1 rounded-lg"
+                  style={{ color: '#7B8FAD' }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Visitor details */}
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0"
+                  style={{
+                    background: alert.type === 'approved' ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.15)',
+                    color: alert.type === 'approved' ? '#4ade80' : '#f87171',
+                    border: `1px solid ${alert.type === 'approved' ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                  }}
+                >
+                  {alert.visitor.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">{alert.visitor.name}</p>
+                  <div className="text-xs flex flex-wrap gap-x-3 mt-0.5" style={{ color: '#94a3b8' }}>
+                    <span className="font-semibold" style={{ color: '#E8C55A' }}>{alert.visitor.purpose}</span>
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3" />{alert.visitor.phone}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Queue indicator */}
+              {alerts.length > 1 && (
+                <p className="text-xs text-center mt-3 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#7B8FAD' }}>
+                  {alerts.length - 1} more alert{alerts.length > 2 ? 's' : ''} pending
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -136,6 +340,17 @@ export default function VisitorsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Notification permission indicator */}
+            {notifState === 'granted' && (
+              <div className="p-2 rounded-xl" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <Bell className="w-4 h-4" style={{ color: '#4ade80' }} />
+              </div>
+            )}
+            {notifState === 'denied' && (
+              <div className="p-2 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <BellOff className="w-4 h-4" style={{ color: '#f87171' }} />
+              </div>
+            )}
             <button
               onClick={() => fetchVisitors()}
               disabled={refreshing}
@@ -149,6 +364,17 @@ export default function VisitorsPage() {
             </button>
           </div>
         </div>
+
+        {/* Notification permission denied warning */}
+        {notifState === 'denied' && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <BellOff className="w-4 h-4 flex-shrink-0" style={{ color: '#f87171' }} />
+            <p className="text-xs" style={{ color: '#f87171' }}>
+              Notifications blocked. Go to Android Settings → App → Notifications to enable alerts when residents approve visitors.
+            </p>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
@@ -243,18 +469,19 @@ export default function VisitorsPage() {
               </div>
             )}
 
-            {/* Awaiting resident approval */}
+            {/* Awaiting Resident Approval — 1-second live polling */}
             {pendingVisitors.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#facc15', boxShadow: '0 0 8px rgba(234,179,8,0.6)' }} />
                   <p className="text-sm font-semibold text-white">Awaiting Resident Approval</p>
                   <span className="badge badge-yellow">{pendingVisitors.length}</span>
+                  <span className="text-xs ml-auto" style={{ color: '#3A4E6A' }}>polling…</span>
                 </div>
                 <div className="space-y-2">
                   {pendingVisitors.map(v => (
                     <div key={v.id} className="glass p-4 flex items-center justify-between gap-4"
-                      style={{ borderColor: 'rgba(234,179,8,0.15)' }}>
+                      style={{ borderColor: 'rgba(234,179,8,0.2)' }}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                           style={{ background: 'rgba(234,179,8,0.12)', color: '#facc15', border: '1px solid rgba(234,179,8,0.2)' }}>
@@ -299,25 +526,22 @@ export default function VisitorsPage() {
               </div>
             )}
 
-            {/* ── Visit History ── */}
+            {/* Visit History */}
             <div>
               <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                 <p className="text-xs font-bold" style={{ color: '#4A5E7A', letterSpacing: '0.08em' }}>
                   VISIT HISTORY{history.length > 0 && ` (${history.length})`}
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Group mode toggle */}
                   <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(7,16,30,0.6)', border: '1px solid rgba(201,168,76,0.1)' }}>
-                    <button
-                      onClick={() => setGroupMode('date')}
+                    <button onClick={() => setGroupMode('date')}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
                       style={groupMode === 'date'
                         ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' }
                         : { color: '#7B8FAD' }}>
                       <CalendarDays className="w-3.5 h-3.5" /> By Date
                     </button>
-                    <button
-                      onClick={() => setGroupMode('flat')}
+                    <button onClick={() => setGroupMode('flat')}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
                       style={groupMode === 'flat'
                         ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' }
@@ -325,11 +549,8 @@ export default function VisitorsPage() {
                       <Building2 className="w-3.5 h-3.5" /> By Flat
                     </button>
                   </div>
-                  {/* Flat filter dropdown */}
                   <div className="relative">
-                    <select
-                      value={flatFilter}
-                      onChange={e => setFlatFilter(e.target.value)}
+                    <select value={flatFilter} onChange={e => setFlatFilter(e.target.value)}
                       className="lux-input py-1.5 pr-8 text-xs appearance-none cursor-pointer"
                       style={{ minWidth: '110px' }}>
                       <option value="ALL">All Flats</option>
@@ -406,8 +627,6 @@ export default function VisitorsPage() {
   // ── RESIDENT VIEW ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold mb-1" style={{ color: '#C9A84C', letterSpacing: '0.08em' }}>SECURITY</p>
@@ -417,16 +636,13 @@ export default function VisitorsPage() {
           </h1>
           <p className="text-sm mt-1" style={{ color: '#7B8FAD' }}>Approve or deny visitors to your flat</p>
         </div>
-        <button
-          onClick={() => fetchVisitors()}
-          disabled={refreshing}
+        <button onClick={() => fetchVisitors()} disabled={refreshing}
           className="p-2.5 rounded-xl transition-all"
           style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', color: '#C9A84C' }}>
           <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
         </button>
       </div>
 
-      {/* Notification permission banner */}
       {notifState === 'default' && (
         <div className="glass-gold p-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -436,9 +652,7 @@ export default function VisitorsPage() {
             </div>
             <div>
               <p className="text-white font-semibold text-sm">Enable instant visitor alerts</p>
-              <p className="text-xs mt-0.5" style={{ color: '#7B8FAD' }}>
-                Get notified the moment a visitor arrives at your gate.
-              </p>
+              <p className="text-xs mt-0.5" style={{ color: '#7B8FAD' }}>Get notified the moment a visitor arrives.</p>
             </div>
           </div>
           <button
@@ -459,9 +673,7 @@ export default function VisitorsPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
           <BellOff className="w-4 h-4 flex-shrink-0" style={{ color: '#f87171' }} />
-          <p className="text-sm" style={{ color: '#f87171' }}>
-            Notifications blocked. Enable in browser settings for instant alerts.
-          </p>
+          <p className="text-sm" style={{ color: '#f87171' }}>Notifications blocked. Enable in browser settings.</p>
         </div>
       )}
 
@@ -469,7 +681,6 @@ export default function VisitorsPage() {
         [1, 2].map(i => <div key={i} className="skeleton skeleton-card" style={{ animationDelay: `${i * 0.1}s` }} />)
       ) : (
         <>
-          {/* Pending approvals */}
           {pendingVisitors.length > 0 && (
             <div>
               <div className="flex items-center gap-3 mb-3">
@@ -519,16 +730,13 @@ export default function VisitorsPage() {
             </div>
           )}
 
-          {/* Full visitor log for this flat */}
           <div>
             <p className="text-xs font-bold mb-4" style={{ color: '#4A5E7A', letterSpacing: '0.08em' }}>VISITOR LOG</p>
             {visitors.length === 0 ? (
               <div className="glass p-10 text-center">
                 <User className="w-10 h-10 mx-auto mb-3" style={{ color: '#3A4E6A' }} />
                 <p className="text-white font-medium mb-1">No visitors yet</p>
-                <p className="text-sm" style={{ color: '#4A5E7A' }}>
-                  Visitor entries will appear here once logged by security.
-                </p>
+                <p className="text-sm" style={{ color: '#4A5E7A' }}>Entries will appear here once logged by security.</p>
               </div>
             ) : (
               <div className="space-y-2">
