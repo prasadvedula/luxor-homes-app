@@ -5,6 +5,7 @@ declare module 'next-auth' {
     role: string
     backendToken: string
     isPrimaryResident: boolean
+    mustChangePassword: boolean
   }
 
   interface Session {
@@ -15,6 +16,7 @@ declare module 'next-auth' {
       role: string
       backendToken: string
       isPrimaryResident: boolean
+      mustChangePassword: boolean
     }
   }
 
@@ -22,5 +24,6 @@ declare module 'next-auth' {
     role: string
     backendToken: string
     isPrimaryResident: boolean
+    mustChangePassword: boolean
   }
 }

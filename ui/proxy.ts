@@ -6,11 +6,9 @@ const { auth } = NextAuth(authConfig)
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const session = req.auth
+  const user = session?.user
 
-  if (session && (pathname === '/' || pathname === '/login' || pathname === '/register')) {
-    return Response.redirect(new URL('/dashboard', req.url))
-  }
-
+  // Public routes — no auth needed
   const isPublic =
     pathname === '/' ||
     pathname.startsWith('/login') ||
@@ -18,8 +16,24 @@ export default auth((req) => {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/debug')
 
-  if (!isPublic && !session) {
+  if (isPublic) return
+
+  // Require login for all app routes
+  if (!session) {
     return Response.redirect(new URL('/login', req.url))
+  }
+
+  // /change-password is accessible to any logged-in user
+  if (pathname.startsWith('/change-password')) return
+
+  // Force password change before accessing anything else
+  if (user?.mustChangePassword) {
+    return Response.redirect(new URL('/change-password', req.url))
+  }
+
+  // Security officers can only access /visitors
+  if (user?.role === 'SECURITY' && !pathname.startsWith('/visitors')) {
+    return Response.redirect(new URL('/visitors', req.url))
   }
 })
 

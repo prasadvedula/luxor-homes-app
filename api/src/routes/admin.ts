@@ -46,6 +46,40 @@ router.post('/approve-user', async (req: AuthRequest, res: Response): Promise<vo
   res.json({ id: user.id, status: user.registrationStatus })
 })
 
+// ── Security officer management ──────────────────────────────────────────────
+router.get('/security-officers', async (_req, res: Response): Promise<void> => {
+  const officers = await prisma.user.findMany({
+    where: { role: 'SECURITY' },
+    select: { id: true, name: true, phone: true, email: true, mustChangePassword: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  res.json(officers)
+})
+
+router.post('/security-officers', async (_req, res: Response): Promise<void> => {
+  const { name, phone, defaultPassword } = _req.body
+  if (!name || !phone || !defaultPassword) {
+    res.status(400).json({ error: 'name, phone and defaultPassword required' }); return
+  }
+  const cleanPhone = phone.replace(/\D/g, '').replace(/^91(\d{10})$/, '$1').replace(/^0(\d{10})$/, '$1')
+  const existing = await prisma.user.findUnique({ where: { phone: cleanPhone } })
+  if (existing) { res.status(409).json({ error: 'Phone number already in use' }); return }
+
+  const hashed = await bcrypt.hash(defaultPassword, 10)
+  const officer = await prisma.user.create({
+    data: { name, phone: cleanPhone, password: hashed, role: 'SECURITY', registrationStatus: 'APPROVED', isPrimaryResident: true, mustChangePassword: true },
+    select: { id: true, name: true, phone: true, mustChangePassword: true, createdAt: true },
+  })
+  res.status(201).json(officer)
+})
+
+router.delete('/security-officers/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  const officer = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } })
+  if (!officer || officer.role !== 'SECURITY') { res.status(404).json({ error: 'Security officer not found' }); return }
+  await prisma.user.delete({ where: { id: req.params.id } })
+  res.json({ success: true })
+})
+
 // Admin reset a user's password
 router.post('/reset-password', async (req: AuthRequest, res: Response): Promise<void> => {
   const { userId, newPassword } = req.body

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Luxor Homes',
   webDir: 'out',
   server: {
-    url: 'https://ui-psi-sepia.vercel.app',
+    url: 'https://luxor-homes-api-production.up.railway.app',
     cleartext: false,
     androidScheme: 'https',
   },

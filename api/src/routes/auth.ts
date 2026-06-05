@@ -56,7 +56,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     { expiresIn: '7d' }
   )
 
-  res.json({ token, user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role, isPrimaryResident: user.isPrimaryResident } })
+  res.json({ token, user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role, isPrimaryResident: user.isPrimaryResident, mustChangePassword: user.mustChangePassword } })
 })
 
 const registerSchema = z.object({
@@ -119,6 +119,26 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   })
 
   res.status(201).json({ id: user.id, message: 'Registration submitted. Awaiting approval.' })
+})
+
+router.post('/change-password', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { currentPassword, newPassword } = req.body
+  if (!newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: 'New password must be at least 6 characters' }); return
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+  if (!user) { res.status(404).json({ error: 'User not found' }); return }
+
+  // If mustChangePassword is false, verify current password
+  if (!user.mustChangePassword) {
+    if (!currentPassword) { res.status(400).json({ error: 'Current password required' }); return }
+    const valid = await bcrypt.compare(currentPassword, user.password)
+    if (!valid) { res.status(401).json({ error: 'Current password is incorrect' }); return }
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 10)
+  await prisma.user.update({ where: { id: user.id }, data: { password: hashed, mustChangePassword: false } })
+  res.json({ success: true })
 })
 
 router.get('/me', authenticate, (req: AuthRequest, res: Response): void => {

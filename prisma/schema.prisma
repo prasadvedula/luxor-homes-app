@@ -83,6 +83,7 @@ model User {
   role               Role               @default(RESIDENT)
   registrationStatus RegistrationStatus @default(PENDING)
   isPrimaryResident  Boolean            @default(true)
+  mustChangePassword Boolean            @default(false)
   primaryResidentId  String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

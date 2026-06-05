@@ -2,12 +2,22 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { NotificationBell } from './notification-bell'
 
-const nav = [
+const adminNav = [
+  { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/residents',   label: 'Residents',   icon: Users },
+  { href: '/elections',   label: 'Elections',   icon: Vote },
+  { href: '/maintenance', label: 'Maintenance', icon: Wrench },
+  { href: '/visitors',    label: 'Visitors',    icon: ShieldCheck },
+  { href: '/maids',       label: 'Maids',       icon: UserCheck },
+  { href: '/security',    label: 'Security',    icon: Shield },
+]
+
+const residentNav = [
   { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/residents',   label: 'Residents',   icon: Users },
   { href: '/elections',   label: 'Elections',   icon: Vote },
@@ -15,6 +25,16 @@ const nav = [
   { href: '/visitors',    label: 'Visitors',    icon: ShieldCheck },
   { href: '/maids',       label: 'Maids',       icon: UserCheck },
 ]
+
+const securityNav = [
+  { href: '/visitors', label: 'Gate Pass', icon: ShieldCheck },
+]
+
+function getNav(role: string | undefined) {
+  if (role === 'SECURITY') return securityNav
+  if (role === 'ADMIN') return adminNav
+  return residentNav
+}
 
 function useActive() {
   const pathname = usePathname()
@@ -26,6 +46,8 @@ export function Sidebar() {
   const isActive = useActive()
   const { data: session } = useSession()
   const [showSignOut, setShowSignOut] = useState(false)
+
+  const nav = getNav(session?.user?.role)
 
   return (
     <>
@@ -41,7 +63,9 @@ export function Sidebar() {
             </div>
             <div>
               <div className="font-display font-bold text-white text-base leading-tight">Luxor Homes</div>
-              <div className="text-xs mt-0.5" style={{ color: '#4A5E7A' }}>Society Portal</div>
+              <div className="text-xs mt-0.5" style={{ color: '#4A5E7A' }}>
+                {session?.user?.role === 'SECURITY' ? 'Security Portal' : 'Society Portal'}
+              </div>
             </div>
           </div>
         </div>
@@ -102,7 +126,7 @@ export function Sidebar() {
       <MobileHeader />
 
       {/* ── Mobile bottom nav ── */}
-      <MobileBottomNav isActive={isActive} />
+      <MobileBottomNav isActive={isActive} nav={nav} />
     </>
   )
 }
@@ -116,7 +140,6 @@ function MobileHeader() {
     <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 border-b"
       style={{ background: 'rgba(5,13,26,0.95)', borderColor: 'rgba(201,168,76,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
 
-      {/* Logo */}
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
           <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
@@ -124,7 +147,6 @@ function MobileHeader() {
         <span className="font-display font-bold text-white text-base">Luxor Homes</span>
       </div>
 
-      {/* Right: bell + avatar */}
       <div className="flex items-center gap-3">
         <NotificationBell />
         <button onClick={() => setShowMenu(v => !v)}
@@ -134,7 +156,6 @@ function MobileHeader() {
         </button>
       </div>
 
-      {/* Avatar dropdown */}
       {showMenu && (
         <div className="absolute top-full right-3 mt-2 rounded-xl overflow-hidden shadow-2xl"
           style={{ background: '#0B1628', border: '1px solid rgba(201,168,76,0.2)', minWidth: '180px' }}>
@@ -154,7 +175,7 @@ function MobileHeader() {
 }
 
 /* ── Mobile bottom nav ───────────────────────────────────────────────────── */
-function MobileBottomNav({ isActive }: { isActive: (href: string) => boolean }) {
+function MobileBottomNav({ isActive, nav }: { isActive: (href: string) => boolean; nav: typeof residentNav }) {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t"
       style={{ background: 'rgba(5,13,26,0.97)', borderColor: 'rgba(201,168,76,0.15)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>

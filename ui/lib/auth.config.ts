@@ -13,18 +13,20 @@ export const authConfig: NextAuthConfig = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role              = user.role
-        token.backendToken      = user.backendToken
-        token.isPrimaryResident = user.isPrimaryResident
+        token.role               = user.role
+        token.backendToken       = user.backendToken
+        token.isPrimaryResident  = user.isPrimaryResident
+        token.mustChangePassword = user.mustChangePassword
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id                = token.sub as string
-        session.user.role              = token.role as string
-        session.user.backendToken      = token.backendToken as string
-        session.user.isPrimaryResident = token.isPrimaryResident as boolean ?? true
+        session.user.id                 = token.sub as string
+        session.user.role               = token.role as string
+        session.user.backendToken       = token.backendToken as string
+        session.user.isPrimaryResident  = token.isPrimaryResident as boolean ?? true
+        session.user.mustChangePassword = token.mustChangePassword as boolean ?? false
       }
       return session
     },
