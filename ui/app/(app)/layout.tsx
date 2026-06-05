@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  let session = null
+  try { session = await auth() } catch { redirect('/login') }
   if (!session) redirect('/login')
 
   return (
