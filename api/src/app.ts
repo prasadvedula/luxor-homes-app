@@ -33,9 +33,13 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// RSC (React Server Component) page navigation requests have ?_rsc= or
-// Accept: text/x-component — these are Next.js page fetches, not API calls.
-// Forward them directly to Next.js before any API route can intercept them.
+// Route browser page navigations to Next.js before API handlers run.
+// Problem: paths like /visitors exist as both an Express API route AND a Next.js page.
+// When the Capacitor WebView does a full-page load (app reopen, hard reload) at /visitors,
+// Express hits visitorsRouter → authenticate middleware → 401 "Unauthorized" because the
+// browser navigation carries no Authorization header. Fix: if the request looks like a
+// browser page load (Accept: text/html, no Authorization header) send it to Next.js.
+// Actual API calls always include Authorization: Bearer <token> from makeClientApi().
 const UI_PORT = process.env.UI_PORT || '3000'
 const uiProxy = createProxyMiddleware({
   target: `http://localhost:${UI_PORT}`,
@@ -43,7 +47,9 @@ const uiProxy = createProxyMiddleware({
   ws: true,
 })
 app.use((req, res, next) => {
-  if (req.query._rsc !== undefined || req.headers.accept?.includes('text/x-component')) {
+  const accept = req.headers.accept ?? ''
+  const isPageNav = accept.includes('text/html') && !req.headers.authorization
+  if (isPageNav || req.query._rsc !== undefined || accept.includes('text/x-component')) {
     return uiProxy(req, res, next)
   }
   next()
