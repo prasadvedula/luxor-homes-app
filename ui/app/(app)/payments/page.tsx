@@ -67,7 +67,7 @@ export default function PaymentsPage() {
   const [copied, setCopied]       = useState(false)
   const [error, setError]         = useState('')
   const [success, setSuccess]     = useState('')
-  const rzpConfigured = !!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+  const rzpConfigured = true  // keyId comes from backend; no frontend env var needed
 
   const now      = new Date()
   const curMonth = now.getMonth() + 1
