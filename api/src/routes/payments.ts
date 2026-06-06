@@ -140,6 +140,37 @@ router.post('/verify', requireRole('RESIDENT'), async (req: AuthRequest, res: Re
   res.json({ success: true, payment })
 })
 
+// ── Resident: submit UTR after UPI payment ────────────────────────────────────
+// Resident pays via their UPI app, gets a 12-digit UTR, pastes it here.
+// Status stays PENDING until admin manually verifies and calls mark-paid.
+router.post('/submit-utr', requireRole('RESIDENT'), async (req: AuthRequest, res: Response): Promise<void> => {
+  const { utrNumber } = req.body
+  if (!utrNumber || String(utrNumber).trim().length < 6) {
+    res.status(400).json({ error: 'Please enter a valid transaction reference (UTR)' }); return
+  }
+
+  const owner = await prisma.owner.findUnique({
+    where: { userId: req.user!.id },
+    include: { flat: true },
+  })
+  if (!owner) { res.status(404).json({ error: 'Resident profile not found' }); return }
+
+  const { month, year } = currentMonthYear()
+  const payment = await prisma.maintenancePayment.upsert({
+    where: { ownerId_month_year: { ownerId: owner.id, month, year } },
+    create: {
+      ownerId: owner.id, flatLabel: owner.flat.label, residentName: owner.name,
+      amount: AMOUNT, month, year,
+      status: inferStatus(month, year),
+      utrNumber: String(utrNumber).trim(),
+      method: 'upi',
+      note: 'Pending admin verification',
+    },
+    update: { utrNumber: String(utrNumber).trim(), method: 'upi', note: 'Pending admin verification' },
+  })
+  res.json({ success: true, payment })
+})
+
 // ── Admin + Accounts: all payments for a month ────────────────────────────────
 router.get('/all', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest, res: Response): Promise<void> => {
   const now = new Date()
@@ -162,7 +193,7 @@ router.get('/all', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest, re
     .map(o => ({
       id: null, ownerId: o.id, flatLabel: o.flat.label, residentName: o.name,
       amount: AMOUNT, month, year, status: inferStatus(month, year),
-      paidAt: null, method: null, note: null, createdAt: null,
+      paidAt: null, method: null, note: null, utrNumber: null, createdAt: null,
     }))
 
   res.json({ payments: [...payments, ...missing], amount: AMOUNT })

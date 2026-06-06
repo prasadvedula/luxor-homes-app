@@ -148,7 +148,8 @@ model MaintenancePayment {
   razorpayPaymentId  String?       @unique
   razorpaySignature  String?
   paidAt             DateTime?
-  method             String?       // 'online' | 'cash' | 'bank_transfer' | 'waived'
+  method             String?       // 'upi' | 'online' | 'cash' | 'bank_transfer' | 'waived'
+  utrNumber          String?       // UPI transaction reference submitted by resident
   note               String?
   reminderSentAt     DateTime?
   createdAt          DateTime      @default(now())

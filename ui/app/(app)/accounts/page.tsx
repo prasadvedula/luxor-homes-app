@@ -2,8 +2,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import {
-  CreditCard, CheckCircle, Clock, AlertTriangle, IndianRupee,
-  ChevronLeft, ChevronRight, Check, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff,
+  CreditCard, CheckCircle, Clock, AlertTriangle,
+  ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -20,6 +20,7 @@ type Payment = {
   status: 'PENDING' | 'PAID' | 'OVERDUE' | 'WAIVED'
   paidAt: string | null
   method: string | null
+  utrNumber: string | null
   note: string | null
 }
 
@@ -248,9 +249,16 @@ export default function AccountsPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-white font-medium text-sm">{p.residentName}</span>
                             <span className={cn('badge text-xs', s.badge)}>{s.label}</span>
+                            {p.utrNumber && p.status !== 'PAID' && (
+                              <span className="badge badge-blue" style={{ fontSize: '0.6rem' }}>UTR submitted</span>
+                            )}
                           </div>
                           <p className="text-xs mt-0.5" style={{ color: '#7B8FAD' }}>
-                            {p.paidAt ? `Paid ${format(new Date(p.paidAt), 'dd MMM')} · ${p.method}` : `Flat ${p.flatLabel}`}
+                            {p.paidAt
+                              ? `Paid ${format(new Date(p.paidAt), 'dd MMM')} · ${p.method}`
+                              : p.utrNumber
+                                ? `UTR: ${p.utrNumber} · Flat ${p.flatLabel}`
+                                : `Flat ${p.flatLabel}`}
                           </p>
                         </div>
                       </div>
