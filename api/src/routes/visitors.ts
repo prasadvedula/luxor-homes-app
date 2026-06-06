@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth'
+import { sendPushToUser } from '../lib/firebase'
 
 const router = Router()
 router.use(authenticate)
@@ -29,6 +30,21 @@ router.post('/', requireRole('ADMIN', 'SECURITY'), async (req: AuthRequest, res:
   const visitor = await prisma.visitor.create({
     data: { name, phone, purpose, flatToVisit, status: 'PENDING' },
   })
+
+  // Send FCM push to the resident of the target flat
+  const flat = await prisma.flat.findUnique({
+    where: { label: flatToVisit },
+    include: { owner: true },
+  })
+  if (flat?.owner?.userId) {
+    sendPushToUser(
+      flat.owner.userId,
+      '🔔 Visitor at Gate',
+      `${name} is at the gate to visit Flat ${flatToVisit}. Tap to approve or deny.`,
+      { route: '/visitors', visitorId: visitor.id },
+    ).catch(() => {})
+  }
+
   res.status(201).json(visitor)
 })
 

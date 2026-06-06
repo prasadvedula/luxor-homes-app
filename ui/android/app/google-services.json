@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "2057809407",
+    "project_id": "luxor-homes-3ec84",
+    "storage_bucket": "luxor-homes-3ec84.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2057809407:android:17a94034b8597353f80bca",
+        "android_client_info": {
+          "package_name": "com.luxorhomes.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZUnxvXcOeo0QCAtIhEDFflW-5VZbkEBM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

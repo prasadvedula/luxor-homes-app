@@ -145,4 +145,12 @@ router.get('/me', authenticate, (req: AuthRequest, res: Response): void => {
   res.json(req.user)
 })
 
+// ── Save FCM push token for this device ───────────────────────────────────────
+router.post('/fcm-token', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { token } = req.body
+  if (!token || typeof token !== 'string') { res.status(400).json({ error: 'token required' }); return }
+  await prisma.user.update({ where: { id: req.user!.id }, data: { fcmToken: token } })
+  res.json({ success: true })
+})
+
 export default router
