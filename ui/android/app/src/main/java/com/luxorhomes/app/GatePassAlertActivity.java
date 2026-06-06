@@ -62,8 +62,12 @@ public class GatePassAlertActivity extends AppCompatActivity {
         Button btnOpen = findViewById(R.id.btn_open_app);
         btnOpen.setOnClickListener(v -> {
             stopAll();
-            Intent open = new Intent(this, MainActivity.class);
-            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            // Use the launcher intent — same as tapping the app icon.
+            // This correctly resumes the existing MainActivity (and its WebView
+            // session) rather than creating a new instance that loses auth state.
+            Intent open = getPackageManager().getLaunchIntentForPackage(getPackageName());
+            if (open == null) open = new Intent(this, MainActivity.class);
+            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             startActivity(open);
             finish();
         });

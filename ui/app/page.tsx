@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
 import { Building2, Users, Vote, Wrench, ShieldCheck, Star, ArrowRight } from 'lucide-react'
 
 const features = [
@@ -8,7 +10,15 @@ const features = [
   { icon: ShieldCheck, title: 'Visitor Management', desc: 'Security logs visitors, residents approve entries in real time with full audit trail.' },
 ]
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth()
+  if (session?.user) {
+    const role = session.user.role as string | undefined
+    if (role === 'SECURITY')  redirect('/visitors')
+    if (role === 'ACCOUNTS')  redirect('/accounts')
+    redirect('/dashboard')
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg,#050D1A 0%,#081422 50%,#0B1628 100%)' }}>
 
