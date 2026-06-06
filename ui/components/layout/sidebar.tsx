@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut, Shield } from 'lucide-react'
+import { LayoutDashboard, Users, Vote, Wrench, ShieldCheck, UserCheck, LogOut, Shield, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { NotificationBell } from './notification-bell'
@@ -14,24 +14,30 @@ const adminNav = [
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/visitors',    label: 'Visitors',    icon: ShieldCheck },
   { href: '/maids',       label: 'Maids',       icon: UserCheck },
+  { href: '/accounts',    label: 'Accounts',    icon: CreditCard },
   { href: '/security',    label: 'Security',    icon: Shield },
 ]
 
 const residentNav = [
   { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
-  { href: '/residents',   label: 'Residents',   icon: Users },
   { href: '/elections',   label: 'Elections',   icon: Vote },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/visitors',    label: 'Visitors',    icon: ShieldCheck },
   { href: '/maids',       label: 'Maids',       icon: UserCheck },
+  { href: '/payments',    label: 'Payments',    icon: CreditCard },
 ]
 
 const securityNav = [
   { href: '/visitors', label: 'Gate Pass', icon: ShieldCheck },
 ]
 
+const accountsNav = [
+  { href: '/accounts', label: 'Accounts', icon: CreditCard },
+]
+
 function getNav(role: string | undefined) {
   if (role === 'SECURITY') return securityNav
+  if (role === 'ACCOUNTS') return accountsNav
   if (role === 'ADMIN') return adminNav
   return residentNav
 }

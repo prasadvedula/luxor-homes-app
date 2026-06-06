@@ -91,6 +91,40 @@ router.post('/reset-password', async (req: AuthRequest, res: Response): Promise<
   res.json({ success: true })
 })
 
+// ── Accounts manager management ──────────────────────────────────────────────
+router.get('/accounts-managers', async (_req, res: Response): Promise<void> => {
+  const managers = await prisma.user.findMany({
+    where: { role: 'ACCOUNTS' },
+    select: { id: true, name: true, phone: true, email: true, mustChangePassword: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  res.json(managers)
+})
+
+router.post('/accounts-managers', async (req, res: Response): Promise<void> => {
+  const { name, phone, defaultPassword } = req.body
+  if (!name || !phone || !defaultPassword) {
+    res.status(400).json({ error: 'name, phone and defaultPassword required' }); return
+  }
+  const cleanPhone = phone.replace(/\D/g, '').replace(/^91(\d{10})$/, '$1').replace(/^0(\d{10})$/, '$1')
+  const existing = await prisma.user.findUnique({ where: { phone: cleanPhone } })
+  if (existing) { res.status(409).json({ error: 'Phone number already in use' }); return }
+
+  const hashed = await bcrypt.hash(defaultPassword, 10)
+  const manager = await prisma.user.create({
+    data: { name, phone: cleanPhone, password: hashed, role: 'ACCOUNTS', registrationStatus: 'APPROVED', isPrimaryResident: true, mustChangePassword: true },
+    select: { id: true, name: true, phone: true, mustChangePassword: true, createdAt: true },
+  })
+  res.status(201).json(manager)
+})
+
+router.delete('/accounts-managers/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  const mgr = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } })
+  if (!mgr || mgr.role !== 'ACCOUNTS') { res.status(404).json({ error: 'Accounts manager not found' }); return }
+  await prisma.user.delete({ where: { id: req.params.id } })
+  res.json({ success: true })
+})
+
 // Delete a resident (owner) — cascades to family members via DB
 router.delete('/residents/:ownerId', async (req: AuthRequest, res: Response): Promise<void> => {
   const { ownerId } = req.params

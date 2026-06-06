@@ -5,9 +5,11 @@ import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 import app from './app'
+import { startReminders } from './lib/reminders'
 
 const PORT = Number(process.env.PORT) || 4000
 
 app.listen(PORT, () => {
   console.log(`Luxor Homes API running on http://localhost:${PORT}`)
+  startReminders()
 })

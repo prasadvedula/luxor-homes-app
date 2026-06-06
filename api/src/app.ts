@@ -9,6 +9,7 @@ import maintenanceRouter from './routes/maintenance'
 import visitorsRouter from './routes/visitors'
 import maidsRouter from './routes/maids'
 import adminRouter from './routes/admin'
+import paymentsRouter from './routes/payments'
 
 const app = express()
 
@@ -71,6 +72,7 @@ app.use('/maintenance', maintenanceRouter)
 app.use('/visitors', visitorsRouter)
 app.use('/maids', maidsRouter)
 app.use('/admin', adminRouter)
+app.use('/payments', paymentsRouter)
 
 // Proxy all remaining requests to the Next.js UI
 app.use('/', uiProxy)

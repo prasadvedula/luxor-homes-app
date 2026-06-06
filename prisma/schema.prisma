@@ -12,6 +12,14 @@ enum Role {
   ADMIN
   RESIDENT
   SECURITY
+  ACCOUNTS
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
 }
 
 enum FlatStatus {
@@ -119,11 +127,36 @@ model Owner {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flat              Flat               @relation(fields: [flatId], references: [id])
-  emergencyContacts EmergencyContact[]
-  vehicles          Vehicle[]
-  tenant            Tenant?
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flat                Flat                 @relation(fields: [flatId], references: [id])
+  emergencyContacts   EmergencyContact[]
+  vehicles            Vehicle[]
+  tenant              Tenant?
+  maintenancePayments MaintenancePayment[]
+}
+
+model MaintenancePayment {
+  id                 String        @id @default(cuid())
+  ownerId            String
+  flatLabel          String
+  residentName       String
+  amount             Float
+  month              Int
+  year               Int
+  status             PaymentStatus @default(PENDING)
+  razorpayOrderId    String?       @unique
+  razorpayPaymentId  String?       @unique
+  razorpaySignature  String?
+  paidAt             DateTime?
+  method             String?       // 'online' | 'cash' | 'bank_transfer' | 'waived'
+  note               String?
+  reminderSentAt     DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, month, year])
 }
 
 model Tenant {

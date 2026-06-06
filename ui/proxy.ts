@@ -35,6 +35,11 @@ export default auth((req) => {
   if (user?.role === 'SECURITY' && !pathname.startsWith('/visitors')) {
     return Response.redirect(new URL('/visitors', req.url))
   }
+
+  // Accounts managers can only access /accounts
+  if (user?.role === 'ACCOUNTS' && !pathname.startsWith('/accounts')) {
+    return Response.redirect(new URL('/accounts', req.url))
+  }
 })
 
 export const config = {
