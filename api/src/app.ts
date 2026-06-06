@@ -41,6 +41,14 @@ app.use(express.json())
 // browser navigation carries no Authorization header. Fix: if the request looks like a
 // browser page load (Accept: text/html, no Authorization header) send it to Next.js.
 // Actual API calls always include Authorization: Bearer <token> from makeClientApi().
+// Serve APK download page and file — must be before the UI proxy so that
+// browser navigations to /download/* are not forwarded to Next.js
+const downloadDir = path.join(__dirname, '../public/download')
+app.use('/download', express.static(downloadDir))
+app.get('/download', (_req, res) => {
+  res.sendFile(path.join(downloadDir, 'index.html'))
+})
+
 const UI_PORT = process.env.UI_PORT || '3000'
 const uiProxy = createProxyMiddleware({
   target: `http://localhost:${UI_PORT}`,
@@ -54,13 +62,6 @@ app.use((req, res, next) => {
     return uiProxy(req, res, next)
   }
   next()
-})
-
-// Serve APK download page and file
-const downloadDir = path.join(__dirname, '../public/download')
-app.use('/download', express.static(downloadDir))
-app.get('/download', (_req, res) => {
-  res.sendFile(path.join(downloadDir, 'index.html'))
 })
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'luxor-homes-api' }))
