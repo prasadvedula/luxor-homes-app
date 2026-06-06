@@ -10,39 +10,60 @@ export function PushNotificationSetup() {
   useEffect(() => {
     if (!session?.user) return
 
+    let removeListeners: (() => void) | undefined
+
     async function register() {
       try {
         const { PushNotifications } = await import('@capacitor/push-notifications')
 
+        // Listeners MUST be added before register() — the 'registration' event
+        // can fire synchronously before register() returns on some Android versions.
+        const [regHandle, errHandle, tapHandle] = await Promise.all([
+          PushNotifications.addListener('registration', async ({ value: token }) => {
+            console.log('[FCM] Token received, saving…')
+            try {
+              const res = await api('/auth/fcm-token', { method: 'POST', body: JSON.stringify({ token }) })
+              if (res.ok) console.log('[FCM] Token saved to backend')
+              else console.error('[FCM] Backend rejected token:', await res.text())
+            } catch (err) {
+              console.error('[FCM] Token save failed:', err)
+            }
+          }),
+          PushNotifications.addListener('registrationError', (err) => {
+            console.error('[FCM] Registration error:', JSON.stringify(err))
+          }),
+          PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+            const route = action.notification.data?.route
+            if (route && typeof window !== 'undefined') {
+              window.location.href = route
+            }
+          }),
+        ])
+
+        removeListeners = () => {
+          regHandle.remove()
+          errHandle.remove()
+          tapHandle.remove()
+        }
+
         const perm = await PushNotifications.checkPermissions()
-        const granted = perm.receive === 'granted'
-          ? perm
-          : await PushNotifications.requestPermissions()
-        if (granted.receive !== 'granted') return
+        const status = perm.receive === 'granted' ? perm : await PushNotifications.requestPermissions()
+        if (status.receive !== 'granted') {
+          console.warn('[FCM] Notification permission denied')
+          return
+        }
 
         await PushNotifications.register()
-
-        // Send token to backend once received
-        await PushNotifications.addListener('registration', async ({ value: token }) => {
-          try {
-            await api('/auth/fcm-token', { method: 'POST', body: JSON.stringify({ token }) })
-          } catch { /* ignore */ }
-        })
-
-        // Tapping a notification while app is in background/closed
-        await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-          const route = action.notification.data?.route
-          if (route && typeof window !== 'undefined') {
-            window.location.href = route
-          }
-        })
-      } catch {
-        // Not running inside Capacitor (web browser) — skip silently
+        console.log('[FCM] register() called')
+      } catch (err) {
+        // Running in web browser or Capacitor not available — expected, not an error
+        console.log('[FCM] Not available in this environment:', err)
       }
     }
 
     register()
-  }, [session?.user?.id]) // re-register if user changes
+    return () => removeListeners?.()
+  }, [session?.user?.id, api]) // api in deps so we use the real API, not emptyApi
 
   return null
 }
