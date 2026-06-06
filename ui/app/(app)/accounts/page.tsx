@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import {
-  CreditCard, CheckCircle, Clock, AlertTriangle,
+  CreditCard, CheckCircle, Clock, AlertTriangle, CircleDollarSign,
   ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff, Settings, IndianRupee, Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -15,9 +15,10 @@ type Payment = {
   flatLabel: string
   residentName: string
   amount: number
+  paidAmount: number
   month: number
   year: number
-  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'WAIVED'
+  status: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'WAIVED'
   paidAt: string | null
   method: string | null
   utrNumber: string | null
@@ -26,7 +27,7 @@ type Payment = {
 
 type Summary = {
   month: number; year: number; totalOwners: number
-  paid: number; overdue: number; pending: number; waived: number
+  paid: number; partial: number; overdue: number; pending: number; waived: number
   unpaidCount: number; collected: number; outstanding: number; amount: number
 }
 
@@ -35,10 +36,11 @@ type Manager = { id: string; name: string; phone: string; mustChangePassword: bo
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 const statusConfig = {
-  PAID:    { label: 'Paid',    color: '#4ade80', badge: 'badge-green',  Icon: CheckCircle  },
-  PENDING: { label: 'Due',     color: '#facc15', badge: 'badge-yellow', Icon: Clock         },
-  OVERDUE: { label: 'Overdue', color: '#f87171', badge: 'badge-red',    Icon: AlertTriangle },
-  WAIVED:  { label: 'Waived',  color: '#94a3b8', badge: 'badge-gray',   Icon: X             },
+  PAID:    { label: 'Paid',    color: '#4ade80', badge: 'badge-green',  Icon: CheckCircle      },
+  PARTIAL: { label: 'Partial', color: '#fb923c', badge: 'badge-orange', Icon: CircleDollarSign },
+  PENDING: { label: 'Due',     color: '#facc15', badge: 'badge-yellow', Icon: Clock            },
+  OVERDUE: { label: 'Overdue', color: '#f87171', badge: 'badge-red',    Icon: AlertTriangle    },
+  WAIVED:  { label: 'Waived',  color: '#94a3b8', badge: 'badge-gray',   Icon: X                },
 }
 
 export default function AccountsPage() {
@@ -50,10 +52,11 @@ export default function AccountsPage() {
   const [year,  setYear]  = useState(now.getFullYear())
   const [payments, setPayments] = useState<Payment[]>([])
   const [summary,  setSummary]  = useState<Summary | null>(null)
-  const [filter, setFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'OVERDUE'>('ALL')
+  const [filter, setFilter] = useState<'ALL' | 'PAID' | 'PARTIAL' | 'PENDING' | 'OVERDUE'>('ALL')
   const [pageLoading, setPageLoading] = useState(true)
   const [refreshing, setRefreshing]   = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
+  const [cashInput, setCashInput]     = useState<{ ownerId: string; value: string } | null>(null)
   const [notifyingId, setNotifyingId] = useState<string | null>(null)
   const [notifyingAll, setNotifyingAll] = useState(false)
   const [notifyMsg, setNotifyMsg]     = useState('')
@@ -127,11 +130,11 @@ export default function AccountsPage() {
     if (month === 12) { setMonth(1); setYear(y => y + 1) } else setMonth(m => m + 1)
   }
 
-  async function markPaid(p: Payment, method: 'cash' | 'bank_transfer') {
-    setMarkingId(p.ownerId)
+  async function markPaid(p: Payment, method: 'cash' | 'bank_transfer', amountPaid?: number) {
+    setMarkingId(p.ownerId); setCashInput(null)
     const res = await api('/payments/mark-paid', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: p.ownerId, month, year, method }),
+      body: JSON.stringify({ ownerId: p.ownerId, month, year, method, amountPaid }),
     })
     if (res.ok) fetchData(true)
     setMarkingId(null)
@@ -184,7 +187,7 @@ export default function AccountsPage() {
     if (res.ok) setManagers(prev => prev.filter(m => m.id !== id))
   }
 
-  const displayed = filter === 'ALL' ? payments : payments.filter(p => p.status === filter)
+  const displayed = filter === 'ALL' ? payments : payments.filter(p => p.status === (filter as string))
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear()
 
   return (
@@ -242,10 +245,26 @@ export default function AccountsPage() {
           {summary && (
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Collected',    value: `₹${(summary.collected / 1000).toFixed(0)}k`,  sub: `${summary.paid}/${summary.totalOwners} flats`, color: '#4ade80' },
-                { label: 'Outstanding', value: `₹${(summary.outstanding / 1000).toFixed(0)}k`, sub: `${summary.unpaidCount} unpaid`,               color: '#f87171' },
-                { label: 'Overdue',     value: summary.overdue,  sub: 'past due date',   color: '#fb923c' },
-                { label: 'Pending',     value: summary.pending,  sub: 'not yet due',     color: '#facc15' },
+                {
+                  label: 'Collected', color: '#4ade80',
+                  value: `₹${summary.collected >= 1000 ? (summary.collected / 1000).toFixed(1) + 'k' : summary.collected.toLocaleString('en-IN')}`,
+                  sub: `${summary.paid} fully paid · ${summary.partial} partial`,
+                },
+                {
+                  label: 'Outstanding', color: '#f87171',
+                  value: `₹${summary.outstanding >= 1000 ? (summary.outstanding / 1000).toFixed(1) + 'k' : summary.outstanding.toLocaleString('en-IN')}`,
+                  sub: `${summary.unpaidCount} flats with balance`,
+                },
+                {
+                  label: 'Overdue', color: '#fb923c',
+                  value: summary.overdue,
+                  sub: 'past due date',
+                },
+                {
+                  label: 'Partial', color: '#fb923c',
+                  value: summary.partial,
+                  sub: 'partially paid',
+                },
               ].map(s => (
                 <div key={s.label} className="glass p-4">
                   <p className="text-xs font-semibold mb-1" style={{ color: '#7B8FAD', letterSpacing: '0.06em' }}>{s.label.toUpperCase()}</p>
@@ -259,7 +278,7 @@ export default function AccountsPage() {
           {/* Filters + Generate */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-1 p-1 rounded-lg flex-1" style={{ background: 'rgba(7,16,30,0.6)', border: '1px solid rgba(201,168,76,0.1)' }}>
-              {(['ALL', 'PAID', 'PENDING', 'OVERDUE'] as const).map(f => (
+              {(['ALL', 'OVERDUE', 'PARTIAL', 'PENDING', 'PAID'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
                   className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
                   style={filter === f ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' } : { color: '#7B8FAD' }}>
@@ -301,6 +320,10 @@ export default function AccountsPage() {
               {displayed.map((p) => {
                 const s = statusConfig[p.status]
                 const isMarking = markingId === p.ownerId
+                const remaining = p.amount - (p.paidAmount ?? 0)
+                const paidPct   = p.amount > 0 ? Math.round(((p.paidAmount ?? 0) / p.amount) * 100) : 0
+                const showCash  = cashInput?.ownerId === p.ownerId
+                const canMark   = p.status === 'PENDING' || p.status === 'OVERDUE' || p.status === 'PARTIAL'
                 return (
                   <div key={`${p.ownerId}-${p.month}-${p.year}`} className="glass p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -309,7 +332,7 @@ export default function AccountsPage() {
                           style={{ background: 'rgba(201,168,76,0.1)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.2)' }}>
                           {p.flatLabel}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-white font-medium text-sm">{p.residentName}</span>
                             <span className={cn('badge text-xs', s.badge)}>{s.label}</span>
@@ -318,28 +341,41 @@ export default function AccountsPage() {
                             )}
                           </div>
                           <p className="text-xs mt-0.5" style={{ color: '#7B8FAD' }}>
-                            {p.paidAt
-                              ? `Paid ${format(new Date(p.paidAt), 'dd MMM')} · ${p.method}`
-                              : p.utrNumber
-                                ? `UTR: ${p.utrNumber} · Flat ${p.flatLabel}`
-                                : `Flat ${p.flatLabel}`}
+                            {p.status === 'PAID'
+                              ? `Paid ${p.paidAt ? format(new Date(p.paidAt), 'dd MMM') : ''} · ${p.method}`
+                              : p.status === 'PARTIAL'
+                                ? `₹${(p.paidAmount ?? 0).toLocaleString('en-IN')} paid · ₹${remaining.toLocaleString('en-IN')} remaining`
+                                : p.utrNumber
+                                  ? `UTR: ${p.utrNumber}`
+                                  : `Flat ${p.flatLabel}`}
                           </p>
+                          {p.status === 'PARTIAL' && (
+                            <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                              <div className="h-full rounded-full" style={{ width: `${paidPct}%`, background: 'linear-gradient(90deg,#fb923c,#f97316)' }} />
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-bold" style={{ color: s.color }}>
-                          ₹{p.amount.toLocaleString('en-IN')}
-                        </span>
-                        {(p.status === 'PENDING' || p.status === 'OVERDUE') && (
+                        <div className="text-right">
+                          <p className="text-sm font-bold" style={{ color: s.color }}>
+                            ₹{remaining > 0 ? remaining.toLocaleString('en-IN') : p.amount.toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-xs" style={{ color: '#4A5E7A' }}>
+                            {p.status === 'PAID' ? 'total' : remaining > 0 ? 'remaining' : 'total'}
+                          </p>
+                        </div>
+                        {canMark && (
                           <div className="flex gap-1">
-                            <button onClick={() => markPaid(p, 'cash')} disabled={isMarking} title="Mark paid (Cash)"
+                            <button onClick={() => setCashInput(showCash ? null : { ownerId: p.ownerId, value: String(remaining) })}
+                              disabled={isMarking} title="Record cash payment"
                               className="p-1.5 rounded-lg transition-all"
-                              style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }}>
+                              style={{ background: showCash ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }}>
                               <Banknote className="w-3.5 h-3.5" />
                             </button>
-                            {(isAdmin || role === 'ACCOUNTS') && p.status === 'OVERDUE' && (
+                            {(isAdmin || role === 'ACCOUNTS') && (
                               <button onClick={() => notifyOne(p)} disabled={notifyingId === p.ownerId}
-                                title="Send overdue notification"
+                                title="Send payment reminder"
                                 className="p-1.5 rounded-lg transition-all"
                                 style={{ background: 'rgba(201,168,76,0.08)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.2)' }}>
                                 {notifyingId === p.ownerId ? <span className="spinner spinner-sm" /> : <Bell className="w-3.5 h-3.5" />}
@@ -356,6 +392,28 @@ export default function AccountsPage() {
                         )}
                       </div>
                     </div>
+                    {/* ── Inline cash input ── */}
+                    {showCash && (
+                      <div className="mt-3 pt-3 border-t flex items-center gap-2 animate-fade-up" style={{ borderColor: 'rgba(34,197,94,0.15)' }}>
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: '#4ade80' }}>₹</span>
+                          <input
+                            type="number" min={1} max={remaining}
+                            className="lux-input pl-7 py-1.5 text-sm"
+                            value={cashInput?.value ?? ''}
+                            onChange={e => setCashInput(c => c ? { ...c, value: e.target.value } : null)}
+                            placeholder={String(remaining)}
+                          />
+                        </div>
+                        <button
+                          onClick={() => markPaid(p, 'cash', parseFloat(cashInput?.value ?? String(remaining)))}
+                          disabled={isMarking}
+                          className="btn-gold btn-sm flex-shrink-0">
+                          {isMarking ? <span className="spinner spinner-sm" /> : 'Record'}
+                        </button>
+                        <button onClick={() => setCashInput(null)} className="btn-ghost btn-sm flex-shrink-0">Cancel</button>
+                      </div>
+                    )}
                   </div>
                 )
               })}

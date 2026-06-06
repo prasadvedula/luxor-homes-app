@@ -17,6 +17,7 @@ enum Role {
 
 enum PaymentStatus {
   PENDING
+  PARTIAL
   PAID
   OVERDUE
   WAIVED
@@ -143,6 +144,7 @@ model MaintenancePayment {
   flatLabel          String
   residentName       String
   amount             Float
+  paidAmount         Float         @default(0)
   month              Int
   year               Int
   status             PaymentStatus @default(PENDING)
