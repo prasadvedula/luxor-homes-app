@@ -57,7 +57,7 @@ export default function PaymentsPage() {
   const [history, setHistory]     = useState<Payment[]>([])
   const [defaultAmount, setDefaultAmount] = useState(2500)
   const [pageLoading, setPageLoading]     = useState(true)
-  const [payMode, setPayMode]     = useState<'upi' | 'razorpay'>('upi')
+  const [payMode, setPayMode]     = useState<'upi' | 'razorpay'>('razorpay')
   const [rzpReady, setRzpReady]   = useState(false)
   const [paying, setPaying]       = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
@@ -236,8 +236,8 @@ export default function PaymentsPage() {
             {/* Payment options */}
             {canPay && !pendingUtr && (
               <div className="glass p-5 space-y-5">
-                {/* Mode tabs */}
-                {rzpConfigured && (
+                {/* Mode tabs — only shown when Razorpay is not configured (manual UPI fallback) */}
+                {!rzpConfigured && UPI_ID && (
                   <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(7,16,30,0.6)', border: '1px solid rgba(201,168,76,0.1)' }}>
                     {(['upi', 'razorpay'] as const).map(m => (
                       <button key={m} onClick={() => setPayMode(m)}
@@ -253,8 +253,8 @@ export default function PaymentsPage() {
                 {error && <div className="p-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>{error}</div>}
                 {success && <div className="p-3 rounded-xl text-sm" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80' }}>{success}</div>}
 
-                {/* ── UPI payment ── */}
-                {payMode === 'upi' && (
+                {/* ── UPI payment (fallback when Razorpay not configured) ── */}
+                {!rzpConfigured && payMode === 'upi' && (
                   <div className="space-y-4">
                     {!UPI_ID ? (
                       <p className="text-sm text-center" style={{ color: '#f87171' }}>
@@ -342,7 +342,7 @@ export default function PaymentsPage() {
                 )}
 
                 {/* ── Razorpay ── */}
-                {payMode === 'razorpay' && rzpConfigured && (
+                {rzpConfigured && (
                   <div className="space-y-3">
                     <p className="text-xs" style={{ color: '#7B8FAD' }}>Pay securely via Razorpay — UPI, Debit/Credit Cards, Net Banking, Wallets</p>
                     <button onClick={handleRazorpay} disabled={paying || !rzpReady} className="btn-gold w-full justify-center py-3.5 text-base">
