@@ -137,8 +137,18 @@ router.put('/settings/maintenance-amount', async (req: AuthRequest, res: Respons
   if (!amount || isNaN(amount) || amount <= 0) {
     res.status(400).json({ error: 'A valid positive amount is required' }); return
   }
-  await setMaintenanceAmount(amount)
-  res.json({ maintenanceAmount: amount })
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year  = now.getFullYear()
+  // Save new fee and update all unpaid records for the current month atomically
+  const [, updated] = await Promise.all([
+    setMaintenanceAmount(amount),
+    prisma.maintenancePayment.updateMany({
+      where: { month, year, status: { in: ['PENDING', 'OVERDUE'] } },
+      data: { amount },
+    }),
+  ])
+  res.json({ maintenanceAmount: amount, updatedRecords: updated.count })
 })
 
 // Delete a resident (owner) — cascades to family members via DB
