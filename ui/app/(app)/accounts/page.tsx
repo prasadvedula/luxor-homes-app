@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   CreditCard, CheckCircle, Clock, AlertTriangle,
-  ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff,
+  ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff, Settings, IndianRupee,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -54,7 +54,7 @@ export default function AccountsPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [refreshing, setRefreshing]   = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
-  const [activeTab, setActiveTab]     = useState<'payments' | 'managers'>('payments')
+  const [activeTab, setActiveTab]     = useState<'payments' | 'managers' | 'settings'>('payments')
 
   // Accounts managers (admin only)
   const [managers, setManagers] = useState<Manager[]>([])
@@ -62,6 +62,13 @@ export default function AccountsPage() {
   const [mgrForm, setMgrForm] = useState({ name: '', phone: '', defaultPassword: '' })
   const [mgrLoading, setMgrLoading] = useState(false)
   const [showMgrPwd, setShowMgrPwd] = useState(false)
+
+  // Settings (admin only)
+  const [maintenanceAmount, setMaintenanceAmount] = useState<number | null>(null)
+  const [amountInput, setAmountInput] = useState('')
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [settingsError, setSettingsError] = useState('')
 
   const role = session?.user?.role
   const isAdmin = role === 'ADMIN'
@@ -86,6 +93,28 @@ export default function AccountsPage() {
   }, [api])
 
   useEffect(() => { if (isAdmin && activeTab === 'managers') fetchManagers() }, [isAdmin, activeTab, fetchManagers])
+
+  const fetchSettings = useCallback(async () => {
+    const res = await api('/admin/settings')
+    if (res.ok) {
+      const d = await res.json()
+      setMaintenanceAmount(d.maintenanceAmount)
+      setAmountInput(String(d.maintenanceAmount))
+    }
+  }, [api])
+
+  useEffect(() => { if (isAdmin && activeTab === 'settings') fetchSettings() }, [isAdmin, activeTab, fetchSettings])
+
+  async function saveMaintenanceAmount(e: React.FormEvent) {
+    e.preventDefault()
+    const val = parseFloat(amountInput)
+    if (!val || val <= 0) { setSettingsError('Enter a valid positive amount'); return }
+    setSettingsLoading(true); setSettingsError(''); setSettingsSaved(false)
+    const res = await api('/admin/settings/maintenance-amount', { method: 'PUT', body: JSON.stringify({ amount: val }) })
+    setSettingsLoading(false)
+    if (res.ok) { setMaintenanceAmount(val); setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 3000) }
+    else { const e = await res.json().catch(() => ({})); setSettingsError(e.error || 'Failed to save') }
+  }
 
   function prevMonth() {
     if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1)
@@ -161,11 +190,11 @@ export default function AccountsPage() {
       {/* Admin tabs */}
       {isAdmin && (
         <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(7,16,30,0.6)', border: '1px solid rgba(201,168,76,0.1)' }}>
-          {(['payments', 'managers'] as const).map(t => (
+          {(['payments', 'managers', 'settings'] as const).map(t => (
             <button key={t} onClick={() => setActiveTab(t)}
               className="flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all"
               style={activeTab === t ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' } : { color: '#7B8FAD' }}>
-              {t === 'payments' ? 'Payments' : 'Accounts Managers'}
+              {t === 'payments' ? 'Payments' : t === 'managers' ? 'Managers' : 'Settings'}
             </button>
           ))}
         </div>
@@ -360,6 +389,59 @@ export default function AccountsPage() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── SETTINGS TAB (admin only) ── */}
+      {activeTab === 'settings' && isAdmin && (
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-white">Society Settings</p>
+
+          <div className="glass p-5 space-y-4">
+            <div className="flex items-center gap-3 mb-1">
+              <IndianRupee className="w-5 h-5" style={{ color: '#C9A84C' }} />
+              <div>
+                <p className="text-white font-semibold text-sm">Monthly Maintenance Fee</p>
+                <p className="text-xs mt-0.5" style={{ color: '#7B8FAD' }}>
+                  Applied to all new payment records. Existing records are unaffected.
+                </p>
+              </div>
+            </div>
+
+            {maintenanceAmount !== null && (
+              <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)' }}>
+                <p className="text-xs mb-0.5" style={{ color: '#7B8FAD' }}>Current fee</p>
+                <p className="font-display text-2xl font-bold" style={{ color: '#E8C55A' }}>
+                  ₹{maintenanceAmount.toLocaleString('en-IN')}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={saveMaintenanceAmount} className="space-y-3">
+              <div>
+                <label className="lux-label">New Amount (₹)</label>
+                <input
+                  className="lux-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 3000"
+                  value={amountInput}
+                  onChange={e => setAmountInput(e.target.value)}
+                  required
+                />
+              </div>
+              {settingsError && (
+                <p className="text-sm" style={{ color: '#f87171' }}>{settingsError}</p>
+              )}
+              {settingsSaved && (
+                <p className="text-sm" style={{ color: '#4ade80' }}>Fee updated successfully.</p>
+              )}
+              <button type="submit" disabled={settingsLoading} className="btn-gold">
+                {settingsLoading ? <><span className="spinner spinner-sm" /> Saving…</> : <><Settings className="w-4 h-4" /> Save Fee</>}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

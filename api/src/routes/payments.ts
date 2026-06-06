@@ -1,13 +1,13 @@
 import { Router, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth'
+import { getMaintenanceAmount } from '../lib/settings'
 import Razorpay from 'razorpay'
 import crypto from 'crypto'
 
 const router = Router()
 router.use(authenticate)
 
-const AMOUNT = parseFloat(process.env.MAINTENANCE_AMOUNT || '2500')
 const DUE_DAY = 5
 
 function getRazorpay() {
@@ -35,11 +35,14 @@ router.get('/my', requireRole('RESIDENT'), async (req: AuthRequest, res: Respons
   const owner = await prisma.owner.findUnique({ where: { userId: req.user!.id } })
   if (!owner) { res.status(404).json({ error: 'Resident profile not found' }); return }
 
-  const payments = await prisma.maintenancePayment.findMany({
-    where: { ownerId: owner.id },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }],
-  })
-  res.json({ payments, defaultAmount: AMOUNT })
+  const [payments, defaultAmount] = await Promise.all([
+    prisma.maintenancePayment.findMany({
+      where: { ownerId: owner.id },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+    }),
+    getMaintenanceAmount(),
+  ])
+  res.json({ payments, defaultAmount })
 })
 
 // ── Resident: ensure current month record exists (called on page load) ────────
@@ -51,6 +54,7 @@ router.post('/ensure-current', requireRole('RESIDENT'), async (req: AuthRequest,
   if (!owner) { res.status(404).json({ error: 'Resident profile not found' }); return }
 
   const { month, year } = currentMonthYear()
+  const AMOUNT = await getMaintenanceAmount()
   const payment = await prisma.maintenancePayment.upsert({
     where: { ownerId_month_year: { ownerId: owner.id, month, year } },
     create: {
@@ -85,6 +89,7 @@ router.post('/create-order', requireRole('RESIDENT'), async (req: AuthRequest, r
   if (existing?.status === 'PAID') { res.status(400).json({ error: 'Already paid for this month' }); return }
   if (existing?.status === 'WAIVED') { res.status(400).json({ error: 'Payment waived for this month' }); return }
 
+  const AMOUNT = await getMaintenanceAmount()
   const order = await rzp.orders.create({
     amount: AMOUNT * 100,
     currency: 'INR',
@@ -141,8 +146,6 @@ router.post('/verify', requireRole('RESIDENT'), async (req: AuthRequest, res: Re
 })
 
 // ── Resident: submit UTR after UPI payment ────────────────────────────────────
-// Resident pays via their UPI app, gets a 12-digit UTR, pastes it here.
-// Status stays PENDING until admin manually verifies and calls mark-paid.
 router.post('/submit-utr', requireRole('RESIDENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   const { utrNumber } = req.body
   if (!utrNumber || String(utrNumber).trim().length < 6) {
@@ -156,6 +159,7 @@ router.post('/submit-utr', requireRole('RESIDENT'), async (req: AuthRequest, res
   if (!owner) { res.status(404).json({ error: 'Resident profile not found' }); return }
 
   const { month, year } = currentMonthYear()
+  const AMOUNT = await getMaintenanceAmount()
   const payment = await prisma.maintenancePayment.upsert({
     where: { ownerId_month_year: { ownerId: owner.id, month, year } },
     create: {
@@ -177,16 +181,15 @@ router.get('/all', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest, re
   const month = parseInt(req.query.month as string) || now.getMonth() + 1
   const year  = parseInt(req.query.year  as string) || now.getFullYear()
 
-  const payments = await prisma.maintenancePayment.findMany({
-    where: { month, year },
-    orderBy: [{ status: 'asc' }, { flatLabel: 'asc' }],
-  })
+  const [payments, allOwners, AMOUNT] = await Promise.all([
+    prisma.maintenancePayment.findMany({
+      where: { month, year },
+      orderBy: [{ status: 'asc' }, { flatLabel: 'asc' }],
+    }),
+    prisma.owner.findMany({ include: { flat: true }, orderBy: { flat: { label: 'asc' } } }),
+    getMaintenanceAmount(),
+  ])
 
-  // Owners who have no payment record yet for this month
-  const allOwners = await prisma.owner.findMany({
-    include: { flat: true },
-    orderBy: { flat: { label: 'asc' } },
-  })
   const paidOwnerIds = new Set(payments.map(p => p.ownerId))
   const missing = allOwners
     .filter(o => !paidOwnerIds.has(o.id))
@@ -215,6 +218,7 @@ router.get('/summary', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest
     prisma.maintenancePayment.aggregate({ where: { month, year, status: { in: ['PENDING', 'OVERDUE'] } }, _sum: { amount: true } }),
   ])
   const unpaidCount = overdue + pending
+  const AMOUNT = await getMaintenanceAmount()
   res.json({
     month, year, totalOwners, paid, overdue, pending,
     waived, unpaidCount,
@@ -229,7 +233,10 @@ router.post('/mark-paid', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequ
   const { ownerId, month, year, method = 'cash', note } = req.body
   if (!ownerId || !month || !year) { res.status(400).json({ error: 'ownerId, month, year required' }); return }
 
-  const owner = await prisma.owner.findUnique({ where: { id: ownerId }, include: { flat: true } })
+  const [owner, AMOUNT] = await Promise.all([
+    prisma.owner.findUnique({ where: { id: ownerId }, include: { flat: true } }),
+    getMaintenanceAmount(),
+  ])
   if (!owner) { res.status(404).json({ error: 'Owner not found' }); return }
 
   const payment = await prisma.maintenancePayment.upsert({
@@ -249,7 +256,10 @@ router.post('/waive', requireRole('ADMIN'), async (req: AuthRequest, res: Respon
   const { ownerId, month, year, note } = req.body
   if (!ownerId || !month || !year) { res.status(400).json({ error: 'ownerId, month, year required' }); return }
 
-  const owner = await prisma.owner.findUnique({ where: { id: ownerId }, include: { flat: true } })
+  const [owner, AMOUNT] = await Promise.all([
+    prisma.owner.findUnique({ where: { id: ownerId }, include: { flat: true } }),
+    getMaintenanceAmount(),
+  ])
   if (!owner) { res.status(404).json({ error: 'Owner not found' }); return }
 
   const payment = await prisma.maintenancePayment.upsert({
@@ -269,7 +279,10 @@ router.post('/generate', requireRole('ADMIN'), async (req: AuthRequest, res: Res
   const { month, year } = req.body
   if (!month || !year) { res.status(400).json({ error: 'month and year required' }); return }
 
-  const owners = await prisma.owner.findMany({ include: { flat: true } })
+  const [owners, AMOUNT] = await Promise.all([
+    prisma.owner.findMany({ include: { flat: true } }),
+    getMaintenanceAmount(),
+  ])
   const status = inferStatus(month, year)
 
   const created = await Promise.all(

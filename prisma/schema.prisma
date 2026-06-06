@@ -285,6 +285,12 @@ model Visitor {
   approvedBy User? @relation("ApprovedBy", fields: [approvedById], references: [id])
 }
 
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Maid {
   id           String     @id @default(cuid())
   name         String

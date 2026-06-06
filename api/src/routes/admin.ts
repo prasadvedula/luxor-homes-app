@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth'
+import { getMaintenanceAmount, setMaintenanceAmount } from '../lib/settings'
 import bcrypt from 'bcryptjs'
 
 const router = Router()
@@ -123,6 +124,21 @@ router.delete('/accounts-managers/:id', async (req: AuthRequest, res: Response):
   if (!mgr || mgr.role !== 'ACCOUNTS') { res.status(404).json({ error: 'Accounts manager not found' }); return }
   await prisma.user.delete({ where: { id: req.params.id } })
   res.json({ success: true })
+})
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+router.get('/settings', async (_req, res: Response): Promise<void> => {
+  const maintenanceAmount = await getMaintenanceAmount()
+  res.json({ maintenanceAmount })
+})
+
+router.put('/settings/maintenance-amount', async (req: AuthRequest, res: Response): Promise<void> => {
+  const amount = parseFloat(req.body.amount)
+  if (!amount || isNaN(amount) || amount <= 0) {
+    res.status(400).json({ error: 'A valid positive amount is required' }); return
+  }
+  await setMaintenanceAmount(amount)
+  res.json({ maintenanceAmount: amount })
 })
 
 // Delete a resident (owner) — cascades to family members via DB

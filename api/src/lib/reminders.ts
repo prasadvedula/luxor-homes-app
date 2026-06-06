@@ -1,11 +1,13 @@
 import cron from 'node-cron'
 import { prisma } from './prisma'
 import { sendMaintenanceReminder } from './mailer'
-
-const AMOUNT = parseFloat(process.env.MAINTENANCE_AMOUNT || '2500')
+import { getMaintenanceAmount } from './settings'
 
 async function ensureMonthRecords(month: number, year: number) {
-  const owners = await prisma.owner.findMany({ include: { flat: true } })
+  const [owners, AMOUNT] = await Promise.all([
+    prisma.owner.findMany({ include: { flat: true } }),
+    getMaintenanceAmount(),
+  ])
   const dueDate = new Date(year, month - 1, 5, 23, 59, 59)
   const status = new Date() > dueDate ? 'OVERDUE' : 'PENDING'
 
