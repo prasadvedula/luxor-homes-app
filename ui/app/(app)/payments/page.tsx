@@ -243,7 +243,7 @@ export default function PaymentsPage() {
                       <button key={m} onClick={() => setPayMode(m)}
                         className="flex-1 py-2 rounded-md text-xs font-semibold transition-all capitalize"
                         style={payMode === m ? { background: 'rgba(201,168,76,0.15)', color: '#E8C55A', border: '1px solid rgba(201,168,76,0.25)' } : { color: '#7B8FAD' }}>
-                        {m === 'upi' ? 'UPI / QR Code' : 'Cards / Net Banking'}
+                        {m === 'upi' ? 'UPI / QR Code' : 'Razorpay Checkout'}
                       </button>
                     ))}
                   </div>
