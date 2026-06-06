@@ -36,8 +36,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col justify-between w-[42%] p-12 border-r relative overflow-hidden" style={{ borderColor: 'rgba(201,168,76,0.12)' }}>
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-            <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0B1628,#111f35)', border: '1.5px solid rgba(201,168,76,0.5)', boxShadow: '0 4px 16px rgba(201,168,76,0.25)' }}>
+            <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-10 h-10 object-contain" />
           </div>
           <span className="font-display text-xl font-bold text-white">Luxor Homes</span>
         </div>

@@ -147,8 +147,8 @@ function MobileHeader() {
       style={{ background: 'rgba(5,13,26,0.95)', borderColor: 'rgba(201,168,76,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
 
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ boxShadow: '0 2px 8px rgba(201,168,76,0.4)' }}>
-          <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-full h-full object-cover" />
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0B1628,#111f35)', border: '1.5px solid rgba(201,168,76,0.5)', boxShadow: '0 2px 10px rgba(201,168,76,0.2)' }}>
+          <img src="/luxor-icon.svg" alt="Luxor Homes" className="w-7 h-7 object-contain" />
         </div>
         <span className="font-display font-bold text-white text-base">Luxor Homes</span>
       </div>

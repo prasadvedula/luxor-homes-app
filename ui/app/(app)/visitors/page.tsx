@@ -304,18 +304,16 @@ export default function VisitorsPage() {
         {alert && (
           <div
             className="fixed left-3 right-3 z-50 animate-scale-in"
-            style={{ top: '68px' }}
+            style={{ top: '82px' }}
           >
             <div
               className="rounded-2xl p-4"
               style={{
-                background: alert.type === 'approved' ? 'rgba(34,197,94,0.13)' : 'rgba(239,68,68,0.13)',
-                border: `1.5px solid ${alert.type === 'approved' ? 'rgba(34,197,94,0.45)' : 'rgba(239,68,68,0.45)'}`,
+                background: alert.type === 'approved' ? 'rgba(5,28,14,0.97)' : 'rgba(28,5,5,0.97)',
+                border: `1.5px solid ${alert.type === 'approved' ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)'}`,
                 boxShadow: alert.type === 'approved'
-                  ? '0 8px 32px rgba(34,197,94,0.22), 0 0 0 1px rgba(34,197,94,0.12)'
-                  : '0 8px 32px rgba(239,68,68,0.22), 0 0 0 1px rgba(239,68,68,0.12)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
+                  ? '0 8px 32px rgba(34,197,94,0.35), 0 0 0 1px rgba(34,197,94,0.2)'
+                  : '0 8px 32px rgba(239,68,68,0.35), 0 0 0 1px rgba(239,68,68,0.2)',
               }}
             >
               {/* Header row */}
