@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth'
-import { sendPushToUser } from '../lib/firebase'
+import { sendGatePassPush } from '../lib/firebase'
 
 const router = Router()
 router.use(authenticate)
@@ -37,11 +37,11 @@ router.post('/', requireRole('ADMIN', 'SECURITY'), async (req: AuthRequest, res:
     include: { owner: true },
   })
   if (flat?.owner?.userId) {
-    sendPushToUser(
+    sendGatePassPush(
       flat.owner.userId,
       '🔔 Visitor at Gate',
       `${name} is at the gate to visit Flat ${flatToVisit}. Tap to approve or deny.`,
-      { route: '/visitors', visitorId: visitor.id },
+      visitor.id,
     ).catch(() => {})
   }
 

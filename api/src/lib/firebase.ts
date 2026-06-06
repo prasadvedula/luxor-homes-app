@@ -21,6 +21,39 @@ function getApp(): App | null {
   }
 }
 
+// Gate pass: DATA-ONLY message so LuxorMessagingService creates the full-screen alert.
+// Regular notification messages are handled by the Firebase SDK in background and
+// cannot trigger full-screen intents — only data messages reach onMessageReceived.
+export async function sendGatePassPush(
+  userId: string,
+  title: string,
+  body: string,
+  visitorId: string,
+) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } })
+  if (!user?.fcmToken) return
+
+  const app = getApp()
+  if (!app) { console.log('[FCM] Not configured — skipping gate pass push'); return }
+
+  try {
+    await getMessaging(app).send({
+      token: user.fcmToken,
+      // NO notification field — data-only so our custom service handles it
+      data: { type: 'gate_pass', title, body, visitorId },
+      android: { priority: 'high' },
+    })
+    console.log(`[FCM] Gate pass push → ${user.fcmToken.slice(0, 20)}…`)
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code
+    if (code === 'messaging/registration-token-not-registered') {
+      await prisma.user.updateMany({ where: { fcmToken: user.fcmToken }, data: { fcmToken: null } })
+    }
+    console.error('[FCM] Gate pass push failed:', code ?? err)
+  }
+}
+
+// General push (payment reminders etc.) — standard notification message
 export async function sendPushToUser(
   userId: string,
   title: string,
