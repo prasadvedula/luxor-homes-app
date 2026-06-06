@@ -42,12 +42,13 @@ app.use(express.json())
 // browser navigation carries no Authorization header. Fix: if the request looks like a
 // browser page load (Accept: text/html, no Authorization header) send it to Next.js.
 // Actual API calls always include Authorization: Bearer <token> from makeClientApi().
-// Serve APK download page and file — must be before the UI proxy so that
-// browser navigations to /download/* are not forwarded to Next.js
-const downloadDir = path.join(__dirname, '../public/download')
-app.use('/download', express.static(downloadDir))
+// Direct APK download — must be before the UI proxy
+const apkPath = path.join(__dirname, '../public/download/luxor-homes.apk')
 app.get('/download', (_req, res) => {
-  res.sendFile(path.join(downloadDir, 'index.html'))
+  res.download(apkPath, 'luxor-homes.apk')
+})
+app.get('/download/luxor-homes.apk', (_req, res) => {
+  res.download(apkPath, 'luxor-homes.apk')
 })
 
 const UI_PORT = process.env.UI_PORT || '3000'
