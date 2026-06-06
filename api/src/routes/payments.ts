@@ -205,19 +205,21 @@ router.get('/summary', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest
   const month = parseInt(req.query.month as string) || now.getMonth() + 1
   const year  = parseInt(req.query.year  as string) || now.getFullYear()
 
-  const [paid, overdue, pending, waived, totalOwners] = await Promise.all([
+  const [paid, overdue, pending, waived, totalOwners, collectedAgg, outstandingAgg] = await Promise.all([
     prisma.maintenancePayment.count({ where: { month, year, status: 'PAID' } }),
     prisma.maintenancePayment.count({ where: { month, year, status: 'OVERDUE' } }),
     prisma.maintenancePayment.count({ where: { month, year, status: 'PENDING' } }),
     prisma.maintenancePayment.count({ where: { month, year, status: 'WAIVED' } }),
     prisma.owner.count(),
+    prisma.maintenancePayment.aggregate({ where: { month, year, status: 'PAID' }, _sum: { amount: true } }),
+    prisma.maintenancePayment.aggregate({ where: { month, year, status: { in: ['PENDING', 'OVERDUE'] } }, _sum: { amount: true } }),
   ])
-  const unpaidCount = totalOwners - paid - waived
+  const unpaidCount = overdue + pending
   res.json({
     month, year, totalOwners, paid, overdue, pending,
     waived, unpaidCount,
-    collected: paid * AMOUNT,
-    outstanding: unpaidCount * AMOUNT,
+    collected: collectedAgg._sum.amount ?? 0,
+    outstanding: outstandingAgg._sum.amount ?? 0,
     amount: AMOUNT,
   })
 })
