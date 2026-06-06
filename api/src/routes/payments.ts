@@ -297,4 +297,51 @@ router.post('/generate', requireRole('ADMIN'), async (req: AuthRequest, res: Res
   res.json({ generated: created.length, month, year })
 })
 
+const MONTHS_SHORT = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// ── Admin + Accounts: send payment reminder notification to one resident ──────
+router.post('/notify/:ownerId', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest, res: Response): Promise<void> => {
+  const { ownerId } = req.params
+  const { month, year } = currentMonthYear()
+
+  const payment = await prisma.maintenancePayment.findUnique({
+    where: { ownerId_month_year: { ownerId, month, year } },
+  })
+
+  if (!payment || payment.status === 'PAID' || payment.status === 'WAIVED') {
+    res.status(400).json({ error: 'No outstanding payment for this resident' }); return
+  }
+
+  await prisma.residentNotification.create({
+    data: {
+      ownerId,
+      title: '⚠️ Maintenance Payment Overdue',
+      body: `Your maintenance fee of ₹${payment.amount.toLocaleString('en-IN')} for ${MONTHS_SHORT[month - 1]} ${year} is overdue. Please pay via the app.`,
+      type: 'payment_reminder',
+    },
+  })
+  res.json({ success: true })
+})
+
+// ── Admin + Accounts: send reminder notification to all overdue residents ─────
+router.post('/notify-all', requireRole('ADMIN', 'ACCOUNTS'), async (req: AuthRequest, res: Response): Promise<void> => {
+  const { month, year } = currentMonthYear()
+
+  const overdue = await prisma.maintenancePayment.findMany({
+    where: { month, year, status: 'OVERDUE' },
+  })
+
+  if (overdue.length === 0) { res.json({ success: true, count: 0 }); return }
+
+  await prisma.residentNotification.createMany({
+    data: overdue.map(p => ({
+      ownerId: p.ownerId,
+      title: '⚠️ Maintenance Payment Overdue',
+      body: `Your maintenance fee of ₹${p.amount.toLocaleString('en-IN')} for ${MONTHS_SHORT[month - 1]} ${year} is overdue. Please pay via the app.`,
+      type: 'payment_reminder',
+    })),
+  })
+  res.json({ success: true, count: overdue.length })
+})
+
 export default router

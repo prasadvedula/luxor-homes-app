@@ -132,7 +132,8 @@ model Owner {
   emergencyContacts   EmergencyContact[]
   vehicles            Vehicle[]
   tenant              Tenant?
-  maintenancePayments MaintenancePayment[]
+  maintenancePayments   MaintenancePayment[]
+  notifications         ResidentNotification[]
 }
 
 model MaintenancePayment {
@@ -283,6 +284,18 @@ model Visitor {
   updatedAt    DateTime      @updatedAt
 
   approvedBy User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+}
+
+model ResidentNotification {
+  id        String   @id @default(cuid())
+  ownerId   String
+  title     String
+  body      String
+  type      String   @default("general")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model Setting {

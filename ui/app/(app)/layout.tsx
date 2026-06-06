@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ProgressBar } from '@/components/layout/progress-bar'
+import { NotificationPoller } from '@/components/notification-poller'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let session = null
@@ -11,6 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen" style={{ background: '#050D1A' }}>
       <ProgressBar />
+      <NotificationPoller />
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <main className="flex-1 overflow-auto">

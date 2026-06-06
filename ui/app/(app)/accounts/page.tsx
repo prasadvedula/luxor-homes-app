@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   CreditCard, CheckCircle, Clock, AlertTriangle,
-  ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff, Settings, IndianRupee,
+  ChevronLeft, ChevronRight, X, Shield, Banknote, RefreshCw, Plus, Trash2, Phone, KeyRound, Eye, EyeOff, Settings, IndianRupee, Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -54,6 +54,9 @@ export default function AccountsPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [refreshing, setRefreshing]   = useState(false)
   const [markingId, setMarkingId]     = useState<string | null>(null)
+  const [notifyingId, setNotifyingId] = useState<string | null>(null)
+  const [notifyingAll, setNotifyingAll] = useState(false)
+  const [notifyMsg, setNotifyMsg]     = useState('')
   const [activeTab, setActiveTab]     = useState<'payments' | 'managers' | 'settings'>('payments')
 
   // Accounts managers (admin only)
@@ -132,6 +135,24 @@ export default function AccountsPage() {
     })
     if (res.ok) fetchData(true)
     setMarkingId(null)
+  }
+
+  async function notifyOne(p: Payment) {
+    setNotifyingId(p.ownerId); setNotifyMsg('')
+    const res = await api(`/payments/notify/${p.ownerId}`, { method: 'POST' })
+    setNotifyingId(null)
+    if (res.ok) { setNotifyMsg(`Notification sent to ${p.residentName}`); setTimeout(() => setNotifyMsg(''), 4000) }
+  }
+
+  async function notifyAll() {
+    setNotifyingAll(true); setNotifyMsg('')
+    const res = await api('/payments/notify-all', { method: 'POST' })
+    setNotifyingAll(false)
+    if (res.ok) {
+      const d = await res.json()
+      setNotifyMsg(d.count > 0 ? `Notified ${d.count} overdue resident${d.count > 1 ? 's' : ''}` : 'No overdue residents to notify')
+      setTimeout(() => setNotifyMsg(''), 4000)
+    }
   }
 
   async function waive(p: Payment) {
@@ -251,7 +272,21 @@ export default function AccountsPage() {
                 <Plus className="w-3.5 h-3.5" /> Generate
               </button>
             )}
+            {(isAdmin || role === 'ACCOUNTS') && (
+              <button onClick={notifyAll} disabled={notifyingAll} className="btn-ghost btn-sm flex-shrink-0"
+                title="Send overdue notification to all unpaid residents">
+                {notifyingAll ? <span className="spinner spinner-sm" /> : <Bell className="w-3.5 h-3.5" />}
+                Notify All
+              </button>
+            )}
           </div>
+
+          {notifyMsg && (
+            <div className="p-3 rounded-xl text-sm animate-fade-up"
+              style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', color: '#E8C55A' }}>
+              {notifyMsg}
+            </div>
+          )}
 
           {/* Payment rows */}
           {pageLoading ? (
@@ -302,6 +337,14 @@ export default function AccountsPage() {
                               style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }}>
                               <Banknote className="w-3.5 h-3.5" />
                             </button>
+                            {(isAdmin || role === 'ACCOUNTS') && p.status === 'OVERDUE' && (
+                              <button onClick={() => notifyOne(p)} disabled={notifyingId === p.ownerId}
+                                title="Send overdue notification"
+                                className="p-1.5 rounded-lg transition-all"
+                                style={{ background: 'rgba(201,168,76,0.08)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.2)' }}>
+                                {notifyingId === p.ownerId ? <span className="spinner spinner-sm" /> : <Bell className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                             {isAdmin && (
                               <button onClick={() => waive(p)} title="Waive payment"
                                 className="p-1.5 rounded-lg transition-all"
