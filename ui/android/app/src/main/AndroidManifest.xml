@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -24,7 +25,7 @@
 
         </activity>
 
-        <!-- Full-screen gate pass alert — shown over lock screen -->
+        <!-- Full-screen gate pass alert shown over lock screen -->
         <activity
             android:name=".GatePassAlertActivity"
             android:exported="false"
@@ -32,7 +33,17 @@
             android:turnScreenOn="true"
             android:theme="@style/AppTheme.NoActionBar" />
 
-        <!-- Custom FCM service for data-only gate pass messages -->
+        <!--
+            Remove Capacitor's MessagingService so there is only ONE
+            com.google.firebase.MESSAGING_EVENT receiver — ours.
+            LuxorMessagingService extends MessagingService and calls
+            super.onMessageReceived() for non-gate-pass messages so
+            Capacitor JS listeners still work normally.
+        -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
+
         <service
             android:name=".LuxorMessagingService"
             android:exported="false">
