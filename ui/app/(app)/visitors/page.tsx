@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils'
 import { format, isToday, isYesterday } from 'date-fns'
 import { useApi } from '@/lib/use-api'
+import { LocalNotifications } from '@capacitor/local-notifications'
 
 type Visitor = {
   id: string
@@ -106,22 +107,42 @@ export default function VisitorsPage() {
   const role = session?.user?.role
   const isGate = role === 'SECURITY' || role === 'ADMIN'
 
-  // ── Sync browser Notification permission state ──────────────────────────
+  // ── Sync browser Notification permission state (resident view only) ───────
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setNotifState(Notification.permission as 'default' | 'granted' | 'denied')
     }
   }, [])
 
-  // ── Auto-request notification permission for gate officers ──────────────
+  // ── Init Capacitor Local Notifications for gate officers ─────────────────
+  // Creates a high-priority Android notification channel with custom chime sound.
+  // Notifications from this channel appear as heads-up banners on top of any app.
   useEffect(() => {
     if (!isGate) return
-    if (typeof Notification === 'undefined') return
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then(p => {
-        setNotifState(p as 'default' | 'granted' | 'denied')
-      })
-    }
+    ;(async () => {
+      try {
+        await LocalNotifications.requestPermissions()
+        await LocalNotifications.createChannel({
+          id: 'gate-alerts',
+          name: 'Gate Visitor Alerts',
+          description: 'Instant alerts when residents approve or deny visitors',
+          importance: 5,       // IMPORTANCE_MAX — shows as heads-up overlay
+          visibility: 1,       // VISIBILITY_PUBLIC — visible on lock screen
+          sound: 'chime',      // matches res/raw/chime.wav (no extension)
+          vibration: true,
+          lights: true,
+          lightColor: '#C9A84C',
+        })
+        setNotifState('granted')
+      } catch {
+        // Non-Capacitor environment (browser dev) — fall back to Web Notifications
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          Notification.requestPermission().then(p =>
+            setNotifState(p as 'default' | 'granted' | 'denied')
+          )
+        }
+      }
+    })()
   }, [isGate])
 
   // ── Initial fetch — seeds statusMap so existing visitors don't alert ─────
@@ -178,22 +199,38 @@ export default function VisitorsPage() {
         setAlerts(prev => [...prev, ...newAlerts])
         playChime(audioCtxRef, newAlerts[0].type)
 
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          newAlerts.forEach(({ visitor, type }) => {
-            new Notification(
-              type === 'approved'
+        // Fire a native Android heads-up notification via Capacitor Local Notifications.
+        // These appear on top of any app, with the chime sound and vibration set on the
+        // channel. Falls back to Web Notification in browser / non-Capacitor environments.
+        try {
+          await LocalNotifications.schedule({
+            notifications: newAlerts.map(({ visitor, type }, i) => ({
+              id: Math.abs((Date.now() + i) % 2147483647),
+              channelId: 'gate-alerts',
+              title: type === 'approved'
                 ? `✅ Entry Approved — Flat ${visitor.flatToVisit}`
                 : `❌ Entry Denied — Flat ${visitor.flatToVisit}`,
-              {
-                body: `${visitor.name}\n${visitor.purpose} · ${visitor.phone}`,
-                icon: '/luxor-icon.svg',
-                badge: '/luxor-icon.svg',
-                tag: `visitor-${visitor.id}`,
-                requireInteraction: true,
-                silent: false,
-              }
-            )
+              body: `${visitor.name}  ·  ${visitor.purpose}\n${visitor.phone}`,
+              sound: 'chime',
+              smallIcon: 'ic_stat_icon_config_sample',
+              largeIcon: 'ic_launcher_round',
+              autoCancel: true,
+              ongoing: false,
+              extra: { visitorId: visitor.id, type },
+            })),
           })
+        } catch {
+          // Browser fallback
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            newAlerts.forEach(({ visitor, type }) =>
+              new Notification(
+                type === 'approved'
+                  ? `✅ Entry Approved — Flat ${visitor.flatToVisit}`
+                  : `❌ Entry Denied — Flat ${visitor.flatToVisit}`,
+                { body: `${visitor.name} · ${visitor.purpose}\n${visitor.phone}`, icon: '/luxor-icon.svg', requireInteraction: true }
+              )
+            )
+          }
         }
       }
     }
