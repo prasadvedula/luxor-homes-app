@@ -304,7 +304,7 @@ export default function VisitorsPage() {
         {alert && (
           <div
             className="fixed left-3 right-3 z-50 animate-scale-in"
-            style={{ top: '82px' }}
+            style={{ top: '120px' }}
           >
             <div
               className="rounded-2xl p-4"
