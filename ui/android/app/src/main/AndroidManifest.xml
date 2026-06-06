@@ -24,6 +24,23 @@
 
         </activity>
 
+        <!-- Full-screen gate pass alert — shown over lock screen -->
+        <activity
+            android:name=".GatePassAlertActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:theme="@style/AppTheme.NoActionBar" />
+
+        <!-- Custom FCM service for data-only gate pass messages -->
+        <service
+            android:name=".LuxorMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -35,13 +52,11 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Required for Android 13+ (API 33+) to show notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- Required for showing high-priority notification as heads-up overlay -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
 </manifest>
