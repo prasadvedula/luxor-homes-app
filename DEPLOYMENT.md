@@ -98,33 +98,76 @@ git log --oneline -3
 The Android APK is a Capacitor wrapper that loads the live Railway URL.
 **Rebuild the APK only when:**
 - The Capacitor config (`ui/capacitor.config.ts`) changes (e.g., server URL)
+- Native Android source changes (`ui/android/app/src/main/java/…`)
 - Native Android assets change (icons, splash screen, permissions)
 - A new Capacitor plugin is added
 
+**Environment requirement (PowerShell):**
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot"
+```
+
 ### 3a — Sync web assets into Android project
 
-```bash
-cd ui
-npm run build          # builds Next.js → out/
-npx cap sync android   # copies web assets + updates plugins
+> The app loads its UI from the live Railway URL (`server.url` in `capacitor.config.ts`), so
+> `npm run build` does not change the bundled assets. Run it anyway to keep the step consistent.
+
+```powershell
+cd C:\luxor-homes-app\ui
+npm run build          # builds Next.js → out/ (output ignored by Capacitor when server.url is set)
+npx cap sync android   # updates Capacitor plugins + config in the Android project
 ```
 
-### 3b — Build the release APK
+### 3b — Build the unsigned release APK
 
-```bash
-cd ui/android
-./gradlew assembleRelease
+```powershell
+cd C:\luxor-homes-app\ui\android
+.\gradlew assembleRelease
 ```
 
-The signed APK is output to:
+Output (unsigned — cannot be installed directly):
 ```
-ui/android/app/build/outputs/apk/release/app-release.apk
+ui/android/app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
-### 3c — Copy APK to Railway download folder and commit
+### 3c — Sign with the Android debug keystore
 
-```bash
-copy ui\android\app\build\outputs\apk\release\app-release.apk api\public\download\luxor-homes.apk
+The project has no production keystore configured. Sign with the Android SDK debug key so the APK
+is installable on any device (standard practice for internal/sideloaded apps).
+
+> **Why not `jarsigner`?** `jarsigner` produces only a v1 (JAR) signature. Android rejects APKs
+> with only v1 signatures when `targetSdkVersion ≥ 30`. Use `zipalign` + `apksigner` instead,
+> which produces v2+v3 block signatures that Android 10+ requires.
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot"
+$bt      = "C:\Android\Sdk\build-tools\36.0.0"
+$ks      = "$env:USERPROFILE\.android\debug.keystore"
+$unsigned = "C:\luxor-homes-app\ui\android\app\build\outputs\apk\release\app-release-unsigned.apk"
+$aligned  = "C:\luxor-homes-app\ui\android\app\build\outputs\apk\release\app-release-aligned.apk"
+$signed   = "C:\luxor-homes-app\ui\android\app\build\outputs\apk\release\app-release.apk"
+
+# Step 1 — align
+& "$bt\zipalign.exe" -v 4 $unsigned $aligned
+
+# Step 2 — sign with v2+v3
+& "$bt\apksigner.bat" sign `
+    --ks $ks --ks-pass pass:android --key-pass pass:android `
+    --ks-key-alias androiddebugkey --out $signed $aligned
+
+# Step 3 — verify
+& "$bt\apksigner.bat" verify --verbose $signed
+# Expected: "Verified using v2 scheme: true" and "Verified using v3 scheme: true"
+```
+
+> **Signing key change warning:** If the previous APK on a device was signed with a different key,
+> the user must **uninstall the old APK first** before installing the new one.
+
+### 3d — Copy APK to Railway download folder and commit
+
+```powershell
+Copy-Item "C:\luxor-homes-app\ui\android\app\build\outputs\apk\release\app-release.apk" `
+          "C:\luxor-homes-app\api\public\download\luxor-homes.apk" -Force
 
 git add api/public/download/luxor-homes.apk
 git commit -m "build: update APK"
@@ -241,10 +284,13 @@ curl https://luxor-homes-api-production.up.railway.app/health
 [ ] 6. If schema.prisma changed:
          → Run prisma db push with public DATABASE_URL
 [ ] 7. If APK needs a rebuild:
-         → cd ui && npm run build && npx cap sync android
-         → cd ui/android && ./gradlew assembleRelease
-         → Copy APK → api/public/download/luxor-homes.apk
+         → $env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot"
+         → cd ui && npm run build && npx cap sync android      (Step 3a)
+         → cd ui/android && .\gradlew assembleRelease           (Step 3b → unsigned APK)
+         → zipalign unsigned APK, then apksigner (v2+v3) with debug.keystore (Step 3c)
+         → Copy signed APK → api/public/download/luxor-homes.apk (Step 3d)
          → git add + commit + push
+         → Users must uninstall old APK first if signing key changed
 [ ] 8. Verify:
          → curl https://luxor-homes-api-production.up.railway.app/health
          → Open https://ui-psi-sepia.vercel.app
