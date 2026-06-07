@@ -42,16 +42,20 @@ app.use(express.json())
 // browser navigation carries no Authorization header. Fix: if the request looks like a
 // browser page load (Accept: text/html, no Authorization header) send it to Next.js.
 // Actual API calls always include Authorization: Bearer <token> from makeClientApi().
-// Direct APK download — handles /download, /download/, /download/luxor-homes.apk
-// Must be before the UI proxy middleware.
-const apkPath = path.join(__dirname, '../public/download/luxor-homes.apk')
-const serveApk = (_req: express.Request, res: express.Response) => {
+// Download landing page + APK — must be before the UI proxy middleware.
+// /download and /download/ → serve index.html (install instructions page)
+// /download/luxor-homes.apk → stream the APK directly
+const downloadDir = path.join(__dirname, '../public/download')
+const apkPath    = path.join(downloadDir, 'luxor-homes.apk')
+const servePage  = (_req: express.Request, res: express.Response) =>
+  res.sendFile(path.join(downloadDir, 'index.html'))
+const serveApk   = (_req: express.Request, res: express.Response) => {
   res.setHeader('Content-Disposition', 'attachment; filename="luxor-homes.apk"')
   res.setHeader('Content-Type', 'application/vnd.android.package-archive')
   res.sendFile(apkPath)
 }
-app.get('/download', serveApk)
-app.get('/download/', serveApk)
+app.get('/download',               servePage)
+app.get('/download/',              servePage)
 app.get('/download/luxor-homes.apk', serveApk)
 
 const UI_PORT = process.env.UI_PORT || '3000'

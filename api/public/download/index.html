@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luxor Homes — Install Android App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #0a0f1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 20px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 60px rgba(212,175,55,0.06);
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #d4af37, #f0d060);
+      border-radius: 20px;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      box-shadow: 0 8px 32px rgba(212,175,55,0.3);
+    }
+
+    h1 {
+      color: #f8f4e8;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: rgba(248,244,232,0.5);
+      font-size: 14px;
+      margin-bottom: 36px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(212,175,55,0.15);
+      margin: 28px 0;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+
+    .step-num {
+      min-width: 28px;
+      height: 28px;
+      background: rgba(212,175,55,0.15);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #d4af37;
+      margin-top: 1px;
+    }
+
+    .step-text {
+      color: rgba(248,244,232,0.75);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .step-text strong {
+      color: #f8f4e8;
+      font-weight: 600;
+    }
+
+    .download-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #d4af37, #f0d060);
+      color: #0a0f1e;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+    }
+
+    .download-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .download-btn:active { transform: translateY(0); }
+
+    .download-btn svg { flex-shrink: 0; }
+
+    .version-info {
+      margin-top: 20px;
+      color: rgba(248,244,232,0.35);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(212,175,55,0.1);
+      border: 1px solid rgba(212,175,55,0.25);
+      color: #d4af37;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🏛</div>
+    <div class="badge">INTERNAL BUILD</div>
+    <h1>Luxor Homes</h1>
+    <p class="subtitle">Society Management — Android App</p>
+
+    <a class="download-btn" href="luxor-homes.apk" download="luxor-homes.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download APK
+    </a>
+
+    <hr class="divider" />
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Tap <strong>Download APK</strong> above. Your browser may warn about downloading an APK — tap <strong>Download anyway</strong>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Go to <strong>Settings → Apps → Special app access → Install unknown apps</strong> and allow your browser or Files app to install.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Open the downloaded file from your <strong>Downloads</strong> folder and tap <strong>Install</strong>. If prompted about Play Protect, tap <strong>Install anyway</strong>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Open <strong>Luxor Homes</strong> from your app drawer and sign in with your credentials.</div>
+    </div>
+
+    <p class="version-info">v1.2 (build 3) · Android 7.0+</p>
+  </div>
+</body>
+</html>
