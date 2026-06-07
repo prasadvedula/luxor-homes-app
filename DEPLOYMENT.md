@@ -334,8 +334,42 @@ npx prisma db push --schema prisma/schema.prisma
 ```
 
 ### APK won't install on device
-- Enable "Install from unknown sources" in Android Settings
-- Uninstall the old version first if the signing key changed
+
+**Step 1 — Uninstall the old app first**
+Go to **Settings → Apps → Luxor Homes → Uninstall**, then install the new APK.
+Required whenever the signing key or `versionCode` conflicts with what's on the device.
+
+**Step 2 — Download with Chrome, not the default browser**
+Some browsers intercept or corrupt APK downloads. Use Chrome on the device.
+
+**Step 3 — Enable "Install from Unknown Sources" for Chrome**
+Android 10+ requires this per-app. When the install dialog appears, tap **Settings** in the
+prompt and toggle **Allow from this source** for Chrome.
+
+**Step 4 — Disable Google Play Protect temporarily (if still blocked)**
+Play Protect can block debug-signed APKs not from the Play Store:
+- Open Play Store → Profile icon → Play Protect → Settings (gear)
+- Turn off **Scan apps with Play Protect**
+- Install the APK, then re-enable Play Protect
+
+### APK downloaded but wrong file size / old version
+
+Railway serves the correct file immediately after deploy, but the browser may cache the old APK.
+
+**Verify the server is serving the right size:**
+```powershell
+(Invoke-WebRequest -Uri "https://luxor-homes-api-production.up.railway.app/download/luxor-homes.apk" -Method Head -UseBasicParsing).Headers["Content-Length"]
+# Must match the local file: (Get-Item api\public\download\luxor-homes.apk).Length
+```
+
+**If sizes differ — force Railway to redeploy:**
+```powershell
+railway up --service luxor-homes-api
+```
+
+**If sizes match but device still gets old file — browser cache:**
+- Download in an Incognito / Private window (`Ctrl+Shift+N` in Chrome/Edge), or
+- Clear browser cache: `chrome://settings/clearBrowserData` → Cached images and files → Clear
 
 ### Prisma can't reach Railway internally
 - Use `DATABASE_PUBLIC_URL` (the `acela.proxy.rlwy.net` address), not `DATABASE_URL` (internal hostname)
